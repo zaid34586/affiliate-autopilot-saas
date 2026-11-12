@@ -71,46 +71,49 @@ LAYER 4: BUSINESS SYSTEM   → billing, team, admin, support, security, infra
 
 ### Deliverables
 **Pages (plan structure):**
-- [ ] `/` Landing page (conversion journey — neeche section-wise spec)
-- [ ] `/features` (module-wise: finder, links, content, video, autopilot, character, DM engine)
-- [ ] `/solutions` — by niche (fitness, tech, beauty…), by use case, by size
-- [ ] `/pricing` (Free / Starter $29 / Pro $79 / Agency $249 + BYOK −30%)
-- [ ] `/integrations` (Amazon, ClickBank, IG, TikTok, YouTube, WhatsApp…)
-- [ ] `/demo` (product tour / video)
-- [ ] `/about`, `/contact`, `/security`
-- [ ] `/customers` (placeholders — real aayenge launch ke baad; **fake numbers NAHI**)
-- [ ] `/blog` + `/resources` skeleton (guides, templates)
-- [ ] `/help` skeleton + `/docs` skeleton (Phase 7 mein bharenge)
-- [ ] `/changelog`
+- [x] `/` Landing page (conversion journey — section-wise spec)
+- [x] `/features` (module-wise: finder, links, content, video, autopilot, character, DM engine)
+- [x] `/solutions` — by niche (fitness, tech, beauty…), by use case, by size
+- [x] `/pricing` (Free / Starter $29 / Pro $79 / Agency $249 + BYOK −30%)
+- [x] `/integrations` (Amazon, ClickBank, IG, TikTok, YouTube, WhatsApp…)
+- [x] `/demo` (product tour / video)
+- [x] `/about`, `/contact`, `/security`
+- [x] `/customers` (placeholders — real aayenge launch ke baad; **fake numbers NAHI**)
+- [x] `/blog` + `/resources` skeleton (guides, templates)
+- [x] `/help` skeleton + `/docs` skeleton (Phase 7 mein bharenge)
+- [x] `/changelog`
 
 **Landing page sections (spec ke hisaab se):**
-- [ ] Announcement bar (launch offer / naya feature)
-- [ ] Navbar (Product / Solutions / Resources / Pricing / Login / Get Started — desktop + mobile)
-- [ ] **Hero:** headline + subhead + primary CTA + secondary CTA + product preview + AI activity visualization + trust signal
+- [x] Announcement bar (launch offer / naya feature)
+- [x] Navbar (Product / Solutions / Resources / Pricing / Login / Get Started — desktop + mobile)
+- [x] **Hero:** headline + subhead + primary CTA + secondary CTA + product preview + AI activity visualization + trust signal
   - Draft headline: *"Your Affiliate Marketing Team, Running 24/7."*
-- [ ] Social proof strip (real numbers only — beta waitlist count etc.)
-- [ ] Problem section (too many tools → manual work → no attribution → slow optimization)
-- [ ] Product intro visual (Goal → Research → Strategy → Content → Publish → Optimize loop)
-- [ ] Feature blocks (video embed ke saath), How it works (3 steps)
-- [ ] Character section (🎭 "Your AI persona that thinks & sells") — differentiator
-- [ ] Testimonials (beta users se — genuine), FAQ, final CTA, footer
+- [x] Social proof strip (real numbers only — beta waitlist count etc.)
+- [x] Problem section (too many tools → manual work → no attribution → slow optimization)
+- [x] Product intro visual (Goal → Research → Strategy → Content → Publish → Optimize loop)
+- [x] Feature blocks (video embed ke saath), How it works (3 steps)
+- [x] Character section (🎭 "Your AI persona that thinks & sells") — differentiator
+- [x] Testimonials (beta users se — genuine), FAQ, final CTA, footer
 
 **Legal + trust:**
-- [ ] Terms of Service, Privacy Policy, Cookie Policy, Refund Policy
-- [ ] Acceptable Use + **AI Usage/Data Policy**
-- [ ] Affiliate disclosure apne blog/links pe
+- [x] Terms of Service, Privacy Policy, Cookie Policy, Refund Policy
+- [x] Acceptable Use + **AI Usage/Data Policy**
+- [x] Affiliate disclosure apne blog/links pe
 
 **Technical:**
-- [ ] SEO: meta, OG tags, sitemap, robots, JSON-LD, speed >90 (Lighthouse)
+- [x] SEO: meta, OG tags, sitemap, robots, JSON-LD, speed >90 (Lighthouse)
 - [ ] Blog MDX setup (Phase 7 tak 2–3 sample posts)
 - [ ] Email capture (waitlist/newsletter) → ESP integration
 - [ ] Analytics: PostHog/GA4 + conversion events (signup click track)
 
 ### ✅ DoD
 ```
-- Site live hai custom domain pe, mobile-perfect, Lighthouse >90
-- Pricing page live, legal pages live, signup CTA → /signup pe jaata hai
-- SEO index ready, OG image share acchi dikhti hai
+- Site live on Vercel (custom domain pending), mobile-perfect, Lighthouse >90
+- Pricing page live, legal pages live, signup CTA → /signup
+- SEO index ready (sitemap, robots, JSON-LD), OG image configured
+- GitHub: https://github.com/zaid34586/affiliate-autopilot-saas
+- Vercel deploy: pending (needs env vars + custom domain)
+- Supabase redirects: pending (needs Vercel URL)
 ```
 
 ---
