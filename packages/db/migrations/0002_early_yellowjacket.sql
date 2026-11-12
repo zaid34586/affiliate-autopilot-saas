@@ -1,0 +1,1 @@
+ALTER TABLE "autopilot_config" ADD COLUMN "circuit_breakers" jsonb DEFAULT '{"maxErrorsPerHour":10,"maxRetries":3,"pauseOnRateLimit":true}'::jsonb;

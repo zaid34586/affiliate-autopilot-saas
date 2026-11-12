@@ -377,6 +377,15 @@ export const autopilotConfig = pgTable("autopilot_config", {
     to: "08:00",
   }),
   paused: boolean("paused").notNull().default(false),
+  circuitBreakers: jsonb("circuit_breakers").$type<{
+    maxErrorsPerHour: number;
+    maxRetries: number;
+    pauseOnRateLimit: boolean;
+  }>().default({
+    maxErrorsPerHour: 10,
+    maxRetries: 3,
+    pauseOnRateLimit: true,
+  }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

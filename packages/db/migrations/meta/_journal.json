@@ -15,6 +15,13 @@
       "when": 1794482077419,
       "tag": "0001_right_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794494332103,
+      "tag": "0002_early_yellowjacket",
+      "breakpoints": true
     }
   ]
 }
