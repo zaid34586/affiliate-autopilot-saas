@@ -14,7 +14,7 @@ const providers: NextAuthConfig["providers"] = [
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials: Partial<Record<"email" | "password", unknown>> | undefined) {
       const email = String(credentials?.email ?? "").trim().toLowerCase();
       const password = String(credentials?.password ?? "");
       if (!email || !password) return null;
@@ -30,11 +30,15 @@ const providers: NextAuthConfig["providers"] = [
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return null;
 
+      // Get workspace for this user
+      const workspace = await getOrCreateWorkspace(user.id);
+
       return {
         id: user.id,
         email: user.email,
         name: user.name,
         image: user.avatarUrl,
+        workspaceId: workspace.id,
       };
     },
   }),
@@ -89,7 +93,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (dbUser) {
           token.uid = dbUser.id;
           // workspace guaranteed ho (naye + purane dono)
-          await getOrCreateWorkspace(dbUser.id);
+          const workspace = await getOrCreateWorkspace(dbUser.id);
+          token.workspaceId = workspace.id;
         }
       }
       return token;
@@ -97,6 +102,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.uid) {
         session.user.id = token.uid as string;
+        session.user.workspaceId = token.workspaceId as string;
       }
       return session;
     },
