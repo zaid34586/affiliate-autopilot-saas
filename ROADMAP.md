@@ -36,25 +36,28 @@ LAYER 4: BUSINESS SYSTEM   → billing, team, admin, support, security, infra
 **🎯 Goal:** Khali mein nahi — solid base taaki har phase aaram se baithe.
 
 ### Deliverables
-- [ ] Monorepo setup (apps/web, services/workers, packages/db, packages/shared)
-- [ ] TypeScript + ESLint + Prettier + Husky pre-commit
-- [ ] CI/CD: GitHub Actions (lint → test → preview deploy → prod)
-- [ ] Database: PostgreSQL (Neon/Supabase) + **schema v1** (plan.md §7 saari core tables)
-- [ ] Migrations setup (Drizzle/Prisma)
-- [ ] Redis + BullMQ queue wiring (empty workers, structure ready)
-- [ ] Auth framework: Google OAuth + email/password (NextAuth/Auth.js)
-- [ ] Workspaces + roles (owner/editor/viewer) — DB + basic API
-- [ ] Object storage bucket (Cloudflare R2) + upload helper
-- [ ] Secrets management (Doppler/SSM) — `.env.example` documented
-- [ ] Sentry (errors) + basic logging
-- [ ] **Architecture Decision Records (ADRs)** — 5–6 docs: auth choice, queue design, video provider abstraction, token vault, multi-tenancy
+- [x] Monorepo setup (apps/web, packages/db — services/workers Phase 4 mein)
+- [x] TypeScript + ESLint (Prettier + Husky — backlog mein)
+- [x] CI: GitHub Actions (lint → test → build; preview/prod deploy jab Vercel push ho)
+- [x] Database: Supabase PostgreSQL 17 + **schema v1** (plan.md §7 saari core tables — 21 live)
+- [x] Migrations setup (Drizzle + Management-API applier — `scripts/apply-migration.cjs`)
+- [x] Seed script (`pnpm db:seed` — demo user + workspace + character)
+- [x] Auth framework: email/password live (NextAuth/Auth.js v5) + Google OAuth ready (env daalo chalu)
+- [x] Workspaces + roles (owner create automatic, membership + autopilot defaults)
+- [x] Dashboard shell (sidebar + overview + 11 module skeletons + onboarding wizard)
+- [x] Secrets management — `.env.example` documented, `.env.local` git-ignored
+- [ ] Redis + BullMQ queue wiring → **Phase 4 mein** (jab video queue chahiye)
+- [ ] Object storage bucket (Cloudflare R2) + upload helper → Phase 4 (video storage ke saath)
+- [ ] Sentry (errors) + structured logging → Phase 3 (pehla real user aane pe)
+- [ ] **Architecture Decision Records (ADRs)** → Phase 1 ke saath (5–6 docs)
+- [ ] Prettier + Husky pre-commit → backlog
 
 ### ✅ DoD (ye sab ho tab phase complete)
 ```
-- Naya dev clone kare → 1 command pe local chal jaye
-- Google se login → workspace banta hai → dashboard shell dikhe
-- CI green: lint + 10 tests pass
-- Schema migrate ho jaye seed data ke saath
+- Naya dev clone kare → 1 command pe local chal jaye          [x] pnpm install + pnpm dev
+- Login → workspace banta hai → dashboard shell dikhe         [x] (credentials; Google = env add karo)
+- CI green: lint + 10 tests pass                               [x] lint ✓ 10/10 tests ✓ build ✓
+- Schema migrate ho jaye seed data ke saath                    [x] 21 tables + pnpm db:seed
 ```
 
 ---

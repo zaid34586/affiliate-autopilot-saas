@@ -1,26 +1,160 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ── Warm ink console palette ────────────────────── */
+  --color-ink: #131110; /* app base — warm near-black */
+  --color-ink-2: #1a1815; /* raised panel */
+  --color-ink-3: #24211c; /* borders / hover */
+  --color-ink-4: #322e27; /* strong border */
+  --color-bone: #f4f0e6; /* primary text */
+  --color-bone-2: #a8a196; /* secondary text */
+  --color-bone-3: #726c62; /* muted text */
+
+  /* signal = "system online" lime, amber = secondary alert */
+  --color-signal: #d4f04b;
+  --color-signal-dim: #a8bf32;
+  --color-amber: #ff9e3d;
+  --color-danger: #ff6b5e;
+  --color-sky: #7fd1ff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: dark;
+}
+
+html {
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Micro label: mono uppercase tracked ─────────────── */
+@utility label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ── Raised console panel ────────────────────────────── */
+@utility panel {
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-ink-3);
+  border-radius: 10px;
+}
+
+@utility panel-hover {
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+/* ── Primary button: signal fill ─────────────────────── */
+@utility btn-signal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--color-signal);
+  color: #131110;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  transition: background-color 140ms ease, transform 140ms ease;
+  cursor: pointer;
+}
+@utility btn-signal-hover {
+  background: var(--color-signal-dim);
+}
+.btn-signal:hover {
+  background: var(--color-signal-dim);
+}
+.btn-signal:active {
+  transform: translateY(1px);
+}
+.btn-signal:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Ghost button ────────────────────────────────────── */
+@utility btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-ink-4);
+  color: var(--color-bone);
+  border-radius: 8px;
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  transition: border-color 140ms ease, background-color 140ms ease;
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  border-color: var(--color-bone-3);
+  background: var(--color-ink-2);
+}
+
+/* ── Text input ──────────────────────────────────────── */
+@utility field {
+  width: 100%;
+  background: var(--color-ink);
+  border: 1px solid var(--color-ink-4);
+  border-radius: 8px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--color-bone);
+  outline: none;
+  transition: border-color 140ms ease;
+}
+.field::placeholder {
+  color: var(--color-bone-3);
+}
+.field:focus {
+  border-color: var(--color-signal);
+}
+
+/* ── Status dot (pulse for autopilot) ────────────────── */
+@utility status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  display: inline-block;
+}
+@utility pulse-slow {
+  animation: pulseSlow 2.4s ease-in-out infinite;
+}
+@keyframes pulseSlow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ── Dotted grid (console background for hero/empty) ─── */
+@utility grid-dots {
+  background-image: radial-gradient(var(--color-ink-3) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: var(--color-ink);
+}
+
+/* thin console scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-4) transparent;
 }

@@ -32,6 +32,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   avatarUrl: text("avatar_url"),
+  passwordHash: text("password_hash"), // credentials login (NULL for OAuth-only users)
   authProvider: text("auth_provider").notNull().default("google"),
   timezone: text("timezone").default("Asia/Kolkata"),
   language: text("language").default("en"),
