@@ -23,7 +23,7 @@ export const postStatusEnum = pgEnum("post_status", ["scheduled", "publishing", 
 export const renderStatusEnum = pgEnum("render_status", ["queued", "rendering", "done", "failed"]);
 export const productStatusEnum = pgEnum("product_status", ["active", "archived"]);
 export const dmModeEnum = pgEnum("dm_mode", ["manual", "semi", "auto"]);
-export const dmStatusEnum = pgEnum("dm_status", ["queued", "sent", "failed", "blocked"]);
+export const dmStatusEnum = pgEnum("dm_status", ["queued", "sent", "failed", "blocked", "draft", "approved"]);
 export const channelEnum = pgEnum("channel", ["comment_reply", "dm", "whatsapp", "inapp_chat"]);
 
 // ───────────────────────── AUTH / WORKSPACE ─────────────────────────
@@ -357,6 +357,7 @@ export const dmMessages = pgTable(
     body: text("body").notNull(),
     uniqueLinkCode: text("unique_link_code"),
     status: dmStatusEnum("status").notNull().default("queued"),
+    approvalMode: dmModeEnum("approval_mode").notNull().default("semi"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     clickAt: timestamp("click_at", { withTimezone: true }),
     conversionId: uuid("conversion_id"),
