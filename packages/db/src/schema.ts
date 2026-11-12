@@ -37,6 +37,8 @@ export const users = pgTable("users", {
   timezone: text("timezone").default("Asia/Kolkata"),
   language: text("language").default("en"),
   onboardingDone: boolean("onboarding_done").notNull().default(false),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -62,6 +64,7 @@ export const workspaceMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: roleEnum("role").notNull().default("viewer"),
+    status: text("status").notNull().default("pending"), // pending | active
     invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("wm_ws_user_uq").on(t.workspaceId, t.userId)],
@@ -434,4 +437,38 @@ export const notifications = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("notif_ws_read_idx").on(t.workspaceId, t.readAt)],
+);
+
+export const notificationPreferences = pgTable(
+  "notification_preferences",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .unique()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    emailPrefs: jsonb("email_prefs").$type<{
+      dailyReport: boolean;
+      weeklyReport: boolean;
+      autopilotErrors: boolean;
+      billingAlerts: boolean;
+      newFeatures: boolean;
+    }>().default({
+      dailyReport: true,
+      weeklyReport: true,
+      autopilotErrors: true,
+      billingAlerts: true,
+      newFeatures: false,
+    }),
+    inAppPrefs: jsonb("in_app_prefs").$type<{
+      autopilotStatus: boolean;
+      dmReplies: boolean;
+      conversionAlerts: boolean;
+    }>().default({
+      autopilotStatus: true,
+      dmReplies: true,
+      conversionAlerts: true,
+    }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
 );
