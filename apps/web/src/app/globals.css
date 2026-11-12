@@ -55,6 +55,18 @@ body {
   transition: border-color 140ms ease, background-color 140ms ease;
 }
 
+/* ── Legal / long-form article container ─────────────── */
+@utility prose-legal {
+  & > p:first-of-type {
+    margin-top: 1rem;
+  }
+  & a {
+    color: var(--color-signal);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+}
+
 /* ── Primary button: signal fill ─────────────────────── */
 @utility btn-signal {
   display: inline-flex;

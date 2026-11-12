@@ -1,53 +1,108 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { Hero } from "./sections/hero";
+import { TrustBar } from "./sections/trust-bar";
+import { Problem } from "./sections/problem";
+import { Loop } from "./sections/loop";
+import { Features } from "./sections/features";
+import { How } from "./sections/how";
+import { Character } from "./sections/character";
+import { PricingTeaser } from "./sections/pricing-teaser";
+import { Faq } from "./sections/faq";
+import { FinalCta } from "./sections/final-cta";
 
-/**
- * Phase 0 placeholder — asli marketing site Phase 1 mein banegi
- * (landing, pricing, legal sab).
- */
-export default function HomePage() {
+export const metadata: Metadata = {
+  title: "Affiliate Autopilot — Your Affiliate Marketing Team, Running 24/7",
+  description:
+    "AI finds best-selling products, builds links, generates reels, publishes posts, and sends DMs with links when users ask. The 24/7 autopilot for affiliate marketers.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Your Affiliate Marketing Team, Running 24/7.",
+    description:
+      "Research → content → video → publish → DM → optimize. All automatic, 24/7.",
+    type: "website",
+  },
+};
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Do I need my own Google Flow / Gemini account?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "No. The video engine runs on our platform pool — cost is included in your plan, one click and the reel is ready. If you add your own Gemini key you get 30% off (BYOK), but it's not required.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Will it post from my accounts without my control?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "You decide. Autopilot has 4 levels: Manual (approve every post), Semi (draft preview), Full (auto with limits), Fire-and-forget. New users default to Semi, and quiet hours + daily caps always apply.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Won't sending DMs from comments get my account banned?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "That's why there's an anti-spam layer: one DM per user (24h cooldown), daily caps, quiet hours, blocklist, negative sentiment skip — all designed within platform rules.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How are earnings tracked?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Every short link tracks clicks, and affiliate networks sync conversions. Dashboard shows post → click → sale fully attributed — which post earned how much commission.",
+      },
+    },
+  ],
+};
+
+const appJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Affiliate Autopilot",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description:
+    "AI marketing operating system for affiliate marketers — research, content, video, publishing, DM sales, and analytics, all on 24/7 autopilot.",
+  offers: [
+    { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Starter", price: "29", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Pro", price: "79", priceCurrency: "USD" },
+    { "@type": "Offer", name: "Agency", price: "249", priceCurrency: "USD" },
+  ],
+  url: SITE_URL,
+};
+
+export default function LandingPage() {
   return (
-    <main className="relative flex min-h-screen flex-col">
-      <header className="flex items-center justify-between px-6 py-5 md:px-10">
-        <div className="flex items-center gap-2.5">
-          <span className="status-dot bg-signal pulse-slow" />
-          <span className="label text-bone">Affiliate Autopilot</span>
-        </div>
-        <nav className="flex items-center gap-3">
-          <Link href="/login" className="btn-ghost">
-            Log in
-          </Link>
-          <Link href="/signup" className="btn-signal">
-            Get started
-          </Link>
-        </nav>
-      </header>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(appJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 
-      <section className="grid-dots flex flex-1 flex-col items-center justify-center px-6 py-24 text-center">
-        <p className="label mb-6 text-signal">
-          Ai marketing operating system
-        </p>
-        <h1 className="max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
-          Your affiliate marketing team,
-          <br />
-          <span className="text-signal">running 24/7.</span>
-        </h1>
-        <p className="mt-6 max-w-xl text-bone-2 md:text-lg">
-          Products dhundhta hai, links banata hai, reels generate karta hai,
-          post karta hai, comments ka DM mein link bhejta hai — sab apne aap.
-          Phase 0 foundation abhi live hai.
-        </p>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/signup" className="btn-signal px-6 py-3 text-base">
-            Start free →
-          </Link>
-          <Link href="/login" className="btn-ghost px-6 py-3 text-base">
-            I have an account
-          </Link>
-        </div>
-        <p className="label mt-14 text-bone-3">
-          Foundation phase · public site coming in phase 1
-        </p>
-      </section>
-    </main>
+      <Hero />
+      <TrustBar />
+      <Problem />
+      <Loop />
+      <Features />
+      <How />
+      <Character />
+      <PricingTeaser />
+      <Faq />
+      <FinalCta />
+    </>
   );
 }
