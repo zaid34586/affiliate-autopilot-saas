@@ -1,0 +1,427 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  jsonb,
+  integer,
+  boolean,
+  numeric,
+  date,
+  pgEnum,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
+
+// ───────────────────────── ENUMS ─────────────────────────
+export const roleEnum = pgEnum("role", ["owner", "admin", "editor", "analyst", "viewer"]);
+export const planEnum = pgEnum("plan", ["free", "starter", "pro", "agency"]);
+export const connectionStatusEnum = pgEnum("connection_status", ["active", "expired", "revoked"]);
+export const autopilotLevelEnum = pgEnum("autopilot_level", ["manual", "semi", "full", "fire_and_forget"]);
+export const contentStatusEnum = pgEnum("content_status", ["draft", "approved", "scheduled", "published", "failed"]);
+export const postStatusEnum = pgEnum("post_status", ["scheduled", "publishing", "published", "failed"]);
+export const renderStatusEnum = pgEnum("render_status", ["queued", "rendering", "done", "failed"]);
+export const productStatusEnum = pgEnum("product_status", ["active", "archived"]);
+export const dmModeEnum = pgEnum("dm_mode", ["manual", "semi", "auto"]);
+export const dmStatusEnum = pgEnum("dm_status", ["queued", "sent", "failed", "blocked"]);
+export const channelEnum = pgEnum("channel", ["comment_reply", "dm", "whatsapp", "inapp_chat"]);
+
+// ───────────────────────── AUTH / WORKSPACE ─────────────────────────
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  avatarUrl: text("avatar_url"),
+  authProvider: text("auth_provider").notNull().default("google"),
+  timezone: text("timezone").default("Asia/Kolkata"),
+  language: text("language").default("en"),
+  onboardingDone: boolean("onboarding_done").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  ownerUserId: uuid("owner_user_id")
+    .notNull()
+    .references(() => users.id),
+  plan: planEnum("plan").notNull().default("free"),
+  creditsBalance: integer("credits_balance").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: roleEnum("role").notNull().default("viewer"),
+    invitedAt: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("wm_ws_user_uq").on(t.workspaceId, t.userId)],
+);
+
+// ───────────────────────── CONNECTIONS (OAuth + BYOK) ─────────────────────────
+export const connections = pgTable(
+  "connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(), // instagram|tiktok|youtube|x|pinterest|facebook|linkedin|gemini_byok|amazon_pa|clickbank|digistore|shareasale|impact|cj|stripe
+    accountId: text("account_id"),
+    accountName: text("account_name"),
+    accountAvatar: text("account_avatar"),
+    accessTokenEnc: text("access_token_enc"), // AES-256 encrypted — never returned to client
+    refreshTokenEnc: text("refresh_token_enc"),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    apiKeyEnc: text("api_key_enc"), // BYOK: user ki apni Gemini/GCP key (optional)
+    scopes: jsonb("scopes").$type<string[]>(),
+    status: connectionStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("conn_ws_provider_idx").on(t.workspaceId, t.provider)],
+);
+
+// ───────────────────────── BRAND / CHARACTER ─────────────────────────
+export const brandProfiles = pgTable("brand_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .unique()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  niche: text("niche").notNull(),
+  audienceDesc: text("audience_desc"),
+  tone: text("tone").default("friendly"),
+  languages: jsonb("languages").$type<string[]>().default(["en"]),
+  bannedWords: jsonb("banned_words").$type<string[]>().default([]),
+  voiceSampleRef: text("voice_sample_ref"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const characters = pgTable("characters", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .unique()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // = primary social handle
+  aliases: jsonb("aliases").$type<string[]>().default([]), // other connected handles
+  avatarKey: text("avatar_key"),
+  bio: text("bio"),
+  toneConfig: jsonb("tone_config").$type<Record<string, unknown>>().default({}),
+  memory: jsonb("memory").$type<Record<string, unknown>>().default({}),
+  discussSettings: jsonb("discuss_settings").$type<Record<string, unknown>>().default({
+    comments: "semi",
+    dm: "off",
+  }),
+  guardrails: jsonb("guardrails").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const thinkingJournal = pgTable(
+  "thinking_journal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    thoughtText: text("thought_text").notNull(),
+    reasoning: jsonb("reasoning").$type<Record<string, unknown>>().default({}),
+    decision: text("decision"),
+    confidence: integer("confidence"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("tj_char_date_uq").on(t.characterId, t.date)],
+);
+
+// ───────────────────────── PRODUCTS & LINKS ─────────────────────────
+export const products = pgTable(
+  "products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    source: text("source").notNull(), // amazon|clickbank|digistore|shareasale|impact|cj|custom
+    sourceId: text("source_id"),
+    title: text("title").notNull(),
+    imageUrl: text("image_url"),
+    price: numeric("price", { precision: 12, scale: 2 }),
+    currency: text("currency").default("USD"),
+    commissionType: text("commission_type"), // percentage|flat
+    commissionValue: numeric("commission_value", { precision: 8, scale: 2 }),
+    category: text("category"),
+    rating: numeric("rating", { precision: 3, scale: 2 }),
+    reviewCount: integer("review_count"),
+    trendScore: numeric("trend_score", { precision: 8, scale: 2 }),
+    aiScore: integer("ai_score"), // 0–100
+    aiScoreBreakdown: jsonb("ai_score_breakdown").$type<Record<string, unknown>>(),
+    status: productStatusEnum("status").notNull().default("active"),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastAnalyzedAt: timestamp("last_analyzed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("prod_ws_status_idx").on(t.workspaceId, t.status),
+    uniqueIndex("prod_ws_source_id_uq").on(t.workspaceId, t.source, t.sourceId),
+  ],
+);
+
+export const affiliateLinks = pgTable(
+  "affiliate_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    rawUrl: text("raw_url").notNull(),
+    deepLink: text("deep_link"),
+    shortCode: text("short_code").notNull().unique(),
+    utm: jsonb("utm").$type<Record<string, string>>().default({}),
+    geoRules: jsonb("geo_rules").$type<Record<string, string>>().default({}),
+    health: text("health").default("ok"), // ok|broken
+    clicksTotal: integer("clicks_total").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("al_ws_product_idx").on(t.workspaceId, t.productId)],
+);
+
+// ───────────────────────── CONTENT & VIDEO ─────────────────────────
+export const contents = pgTable(
+  "contents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    type: text("type").notNull(), // caption|ad_copy|script|video|image|email
+    platformTarget: text("platform_target"),
+    variantNumber: integer("variant_number").default(1),
+    body: jsonb("body").$type<Record<string, unknown>>().notNull(),
+    language: text("language").default("en"),
+    status: contentStatusEnum("status").notNull().default("draft"),
+    aiModelUsed: text("ai_model_used"),
+    costCredits: integer("cost_credits").default(0),
+    complianceOk: boolean("compliance_ok").default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("content_ws_status_idx").on(t.workspaceId, t.status)],
+);
+
+export const videos = pgTable("videos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  contentId: uuid("content_id")
+    .notNull()
+    .references(() => contents.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  mode: text("mode").notNull(), // showcase|listicle|ugc|testimonial|comparison
+  aspect: text("aspect").default("9:16"),
+  provider: text("provider").default("platform_pool"), // platform_pool|byok
+  renderStatus: renderStatusEnum("render_status").notNull().default("queued"),
+  storageKey: text("storage_key"),
+  thumbnailKey: text("thumbnail_key"),
+  durationSec: integer("duration_sec"),
+  costUsd: numeric("cost_usd", { precision: 8, scale: 4 }),
+  renderLog: jsonb("render_log").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ───────────────────────── POSTS ─────────────────────────
+export const posts = pgTable(
+  "posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    contentId: uuid("content_id").references(() => contents.id, { onDelete: "set null" }),
+    videoId: uuid("video_id").references(() => videos.id, { onDelete: "set null" }),
+    connectionId: uuid("connection_id").references(() => connections.id, { onDelete: "set null" }),
+    platform: text("platform").notNull(),
+    platformPostId: text("platform_post_id"),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    status: postStatusEnum("status").notNull().default("scheduled"),
+    error: text("error"),
+    retryCount: integer("retry_count").default(0),
+    permalink: text("permalink"),
+    firstCommentText: text("first_comment_text"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("post_ws_status_idx").on(t.workspaceId, t.status)],
+);
+
+// ───────────────────────── ANALYTICS ─────────────────────────
+export const clickEvents = pgTable(
+  "click_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shortCode: text("short_code").notNull(),
+    ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+    ipHash: text("ip_hash"),
+    geo: text("geo"),
+    userAgent: text("user_agent"),
+    referrer: text("referrer"),
+    postId: uuid("post_id"),
+    productId: uuid("product_id"),
+  },
+  (t) => [index("click_code_idx").on(t.shortCode, t.ts)],
+);
+
+export const analyticsDaily = pgTable(
+  "analytics_daily",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    platform: text("platform"),
+    postId: uuid("post_id"),
+    impressions: integer("impressions").default(0),
+    likes: integer("likes").default(0),
+    comments: integer("comments").default(0),
+    shares: integer("shares").default(0),
+    clicks: integer("clicks").default(0),
+    conversions: integer("conversions").default(0),
+    revenue: numeric("revenue", { precision: 12, scale: 2 }).default("0"),
+  },
+  (t) => [uniqueIndex("ad_ws_day_platform_post_uq").on(t.workspaceId, t.day, t.platform, t.postId)],
+);
+
+export const conversions = pgTable("conversions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  network: text("network").notNull(),
+  productId: uuid("product_id"),
+  orderId: text("order_id"),
+  amount: numeric("amount", { precision: 12, scale: 2 }),
+  commission: numeric("commission", { precision: 12, scale: 2 }),
+  currency: text("currency").default("USD"),
+  status: text("status").default("pending"), // pending|approved|reversed
+  detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ───────────────────────── DM ENGINE ─────────────────────────
+export const dmTriggers = pgTable("dm_triggers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  postId: uuid("post_id"),
+  keywords: jsonb("keywords").$type<{ set: string[]; semantic: boolean }>().default({
+    set: ["link", "price", "buy", "dm"],
+    semantic: true,
+  }),
+  replyTemplate: text("reply_template"),
+  mode: dmModeEnum("mode").notNull().default("semi"),
+  cooldownHours: integer("cooldown_hours").default(24),
+  dailyCap: integer("daily_cap").default(100),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const dmMessages = pgTable(
+  "dm_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
+    platform: text("platform").notNull(),
+    channel: channelEnum("channel").notNull(),
+    recipientHandle: text("recipient_handle").notNull(),
+    triggerKeyword: text("trigger_keyword"),
+    postId: uuid("post_id"),
+    productId: uuid("product_id"),
+    body: text("body").notNull(),
+    uniqueLinkCode: text("unique_link_code"),
+    status: dmStatusEnum("status").notNull().default("queued"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    clickAt: timestamp("click_at", { withTimezone: true }),
+    conversionId: uuid("conversion_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("dm_ws_status_idx").on(t.workspaceId, t.status)],
+);
+
+// ───────────────────────── AUTOPILOT / OPS ─────────────────────────
+export const autopilotConfig = pgTable("autopilot_config", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .unique()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  level: autopilotLevelEnum("level").notNull().default("manual"),
+  dailyPostLimits: jsonb("daily_post_limits").$type<Record<string, number>>().default({}),
+  activePlatforms: jsonb("active_platforms").$type<string[]>().default([]),
+  quietHours: jsonb("quiet_hours").$type<{ from: string; to: string }>().default({
+    from: "22:00",
+    to: "08:00",
+  }),
+  paused: boolean("paused").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const jobsAudit = pgTable(
+  "jobs_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id"),
+    jobType: text("job_type").notNull(), // research|script|video|publish|analytics|optimizer|report
+    status: text("status").notNull(), // running|success|failed
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    input: jsonb("input"),
+    output: jsonb("output"),
+    error: text("error"),
+    costUsd: numeric("cost_usd", { precision: 8, scale: 4 }),
+  },
+  (t) => [index("job_type_status_idx").on(t.jobType, t.status)],
+);
+
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id")
+    .notNull()
+    .unique()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // stripe|razorpay
+  providerSubId: text("provider_sub_id"),
+  plan: planEnum("plan").notNull().default("free"),
+  status: text("status").default("active"), // active|past_due|canceled
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  meteredUsage: jsonb("metered_usage").$type<Record<string, number>>().default({}),
+});
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("notif_ws_read_idx").on(t.workspaceId, t.readAt)],
+);

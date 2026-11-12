@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# secrets — NEVER COMMIT
+.env
+.env.*
+!.env.example
+.secrets/
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# misc
+.DS_Store
+*.pem
+*.log
+npm-debug.log*
+pnpm-debug.log*
+coverage/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# editor
+.idea/
+.vscode/
+
+# vercel
+.vercel/
+
+.supabase-*
