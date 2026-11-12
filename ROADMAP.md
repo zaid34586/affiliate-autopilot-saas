@@ -192,11 +192,15 @@ LAYER 4: BUSINESS SYSTEM   → billing, team, admin, support, security, infra
 - [ ] Post publish + retry + error states
 - [ ] **Manual export fallback:** MP4/caption download + upload guide (jab tak TikTok audit na ho)
 
-### Module E — 🔥 DM Sales Engine v1
-- [ ] IG comment webhook → keyword trigger ("link", "price", "dm")
-- [ ] Auto-reply comment with link (semi-approval mode: draft → user approve → send)
-- [ ] Basic link-in-bio page (`go.site/handle`)
-- [ ] Trigger rules UI (keywords, template, mode)
+### Module E — 🔥 DM Sales Engine v1 ✅
+- [x] IG comment webhook → keyword trigger ("link", "price", "dm")
+- [x] Auto-reply comment with link (semi-approval mode: draft → user approve → send)
+- [x] Basic link-in-bio page (`go.site/handle`)
+- [x] Trigger rules UI (keywords, template, mode)
+- [x] Webhook endpoints: Instagram + YouTube with signature verification
+- [x] DM inbox: unified inbox, draft/approve/reject/send workflow
+- [x] Anti-spam: per-user cooldown, daily caps, sentiment analysis
+- [x] Trigger rules UI: approval modes (manual/semi/auto), cooldown, daily caps
 
 ### Module F — 🎭 Character v1
 - [ ] Character profile page (name from handle, avatar, personality sliders)
