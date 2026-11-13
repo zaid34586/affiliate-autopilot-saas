@@ -30,31 +30,34 @@ export function ModulePage({
 
       {extra}
 
-      <div className="grid-dots flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-4 px-6 py-16 text-center">
-        <span className="label rounded border border-ink-4 bg-ink-2 px-2 py-1 text-amber">
-          {item.phase === "live" ? "empty state" : `${item.phase} — not wired yet`}
-        </span>
-        <p className="mt-5 text-lg font-medium text-bone-2">
-          No data here yet
-        </p>
-        <p className="mt-1.5 max-w-md text-sm text-bone-3">
-          {item.phase === "live"
-            ? "Start with the checklist above."
-            : `This module goes live in ${item.phase}, right after the Phase 0 foundation. The structure is already in place.`}
-        </p>
+      {/* Skeleton empty-state only when the module has no live content yet. */}
+      {!extra && (
+        <div className="grid-dots flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-4 px-6 py-16 text-center">
+          <span className="label rounded border border-ink-4 bg-ink-2 px-2 py-1 text-amber">
+            {item.phase === "live" ? "empty state" : `${item.phase} — not wired yet`}
+          </span>
+          <p className="mt-5 text-lg font-medium text-bone-2">
+            No data here yet
+          </p>
+          <p className="mt-1.5 max-w-md text-sm text-bone-3">
+            {item.phase === "live"
+              ? "Start with the checklist above."
+              : `This module goes live in ${item.phase}, right after the Phase 0 foundation. The structure is already in place.`}
+          </p>
 
-        <ul className="mt-7 grid w-full max-w-lg gap-2.5 text-left">
-          {item.bullets.map((b) => (
-            <li
-              key={b}
-              className="flex items-start gap-3 rounded-lg border border-ink-3 bg-ink-2 px-3.5 py-2.5 text-sm text-bone-2"
-            >
-              <span className="status-dot mt-1.5 bg-signal-dim" />
-              {b}
-            </li>
-          ))}
-        </ul>
-      </div>
+          <ul className="mt-7 grid w-full max-w-lg gap-2.5 text-left">
+            {item.bullets.map((b) => (
+              <li
+                key={b}
+                className="flex items-start gap-3 rounded-lg border border-ink-3 bg-ink-2 px-3.5 py-2.5 text-sm text-bone-2"
+              >
+                <span className="status-dot mt-1.5 bg-signal-dim" />
+                {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

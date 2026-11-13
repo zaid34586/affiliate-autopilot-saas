@@ -74,7 +74,7 @@ export const MAIN_NAV: NavItem[] = [
       "Voiceover + music + word captions",
       "Render queue + cost/quota tracker",
     ],
-    phase: "Phase 4",
+    phase: "live",
   },
   {
     index: "06",
