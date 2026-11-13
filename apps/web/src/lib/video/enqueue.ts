@@ -22,6 +22,8 @@ export interface EnqueueInput {
   workspaceId: string;
   productId: string;
   mode: VideoMode;
+  /** Optional auto-post target: "instagram" | "youtube" | null (off). */
+  autoPostPlatform?: string | null;
 }
 
 export interface EnqueueResult {
@@ -75,7 +77,7 @@ export async function enqueueVideoRender(input: EnqueueInput): Promise<EnqueueRe
       workspaceId: input.workspaceId,
       productId: product.id,
       type: "video",
-      platformTarget: "instagram",
+      platformTarget: input.autoPostPlatform ?? "instagram",
       body: { script, scenes, mode: input.mode } as unknown as Record<string, unknown>,
       status: "draft",
       aiModelUsed: "template-v1", // deterministic generator (LLM swap comes with Phase 5 scripts)
@@ -91,6 +93,7 @@ export async function enqueueVideoRender(input: EnqueueInput): Promise<EnqueueRe
       mode: input.mode,
       aspect: "9:16",
       provider,
+      autoPostPlatform: input.autoPostPlatform ?? null,
       renderStatus: "queued",
       progressPct: 0,
     })

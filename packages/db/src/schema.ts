@@ -253,6 +253,8 @@ export const videos = pgTable(
     durationSec: integer("duration_sec"),
     costUsd: numeric("cost_usd", { precision: 8, scale: 4 }),
     renderLog: jsonb("render_log").$type<Record<string, unknown>>(),
+    /** Auto-post target picked at enqueue: instagram|youtube|null (off). */
+    autoPostPlatform: text("auto_post_platform"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -311,11 +313,17 @@ export const posts = pgTable(
     scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     status: postStatusEnum("status").notNull().default("scheduled"),
+    /** How the post was created: auto (after render) or manual (button). */
+    mode: text("mode").notNull().default("manual"),
+    /** true = simulated publish (no real platform call) — never labeled as live. */
+    sandbox: boolean("sandbox").notNull().default(false),
     error: text("error"),
     retryCount: integer("retry_count").default(0),
     permalink: text("permalink"),
     firstCommentText: text("first_comment_text"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Status-change clock: enables atomic claims + stale 'publishing' recovery. */
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("post_ws_status_idx").on(t.workspaceId, t.status)],
 );

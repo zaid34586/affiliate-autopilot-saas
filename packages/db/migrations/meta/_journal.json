@@ -50,6 +50,20 @@
       "when": 1794560123146,
       "tag": "0006_quiet_puma",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794566662281,
+      "tag": "0007_solid_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794568162835,
+      "tag": "0008_funny_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

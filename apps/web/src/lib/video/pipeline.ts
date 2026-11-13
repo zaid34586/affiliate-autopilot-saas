@@ -16,6 +16,7 @@ import { assembleReel, extractThumbnail, mapLimit, synthSceneClip } from "./ffmp
 import { getVideoProvider } from "./providers";
 import { clipPromptHash } from "./clip-cache";
 import { completeVideo, failOrRetry, logEvent, setProgress, type VideoRow } from "./queue";
+import { autoPostAfterRender } from "@/lib/publisher";
 import type { ScriptDoc } from "./scripts";
 import type { Scene } from "./scenes";
 import {
@@ -277,6 +278,19 @@ export async function renderVideoJob(video: VideoRow): Promise<RenderOutcome> {
       costUsd,
       output: { ...stats, storageKey: finalRel },
     });
+
+    // Auto-post (non-blocking — best effort, never fails the render).
+    if (video.autoPostPlatform) {
+      try {
+        await autoPostAfterRender({
+          workspaceId: video.workspaceId,
+          videoId: video.id,
+          platform: video.autoPostPlatform,
+        });
+      } catch (e) {
+        console.error("Auto-post after render failed:", e);
+      }
+    }
 
     return { outcome: "done", stats };
   } catch (e) {

@@ -49,7 +49,8 @@ export async function claimNextQueuedVideo(): Promise<VideoRow | null> {
       render_log AS "renderLog",
       started_at AS "startedAt",
       finished_at AS "finishedAt",
-      created_at AS "createdAt"
+      created_at AS "createdAt",
+      auto_post_platform AS "autoPostPlatform"
   `);
   const rows = (res as unknown as { rows?: VideoRow[] }).rows ?? (res as unknown as VideoRow[]);
   return rows?.[0] ?? null;

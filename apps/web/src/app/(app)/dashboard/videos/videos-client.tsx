@@ -8,10 +8,12 @@ import {
   Download,
   Film,
   Gauge,
+  Globe,
   Loader2,
   Play,
   Plus,
   RefreshCw,
+  Send,
   Sparkles,
   X,
 } from "lucide-react";
@@ -65,6 +67,34 @@ interface QuotaError {
   };
 }
 
+type PostStatus = "scheduled" | "publishing" | "published" | "failed";
+
+interface VideoPost {
+  platform: "instagram" | "youtube";
+  status: PostStatus;
+  sandbox: boolean;
+  permalink: string | null;
+  platformPostId: string | null;
+}
+
+interface VideoListItem {
+  id: string;
+  title: string | null;
+  mode: string;
+  provider: string;
+  renderStatus: RenderStatus;
+  progressPct: number;
+  failureReason: string | null;
+  retryCount: number;
+  durationSec: number | null;
+  costUsd: string | null;
+  createdAt: string;
+  hasFile: boolean;
+  hasThumb: boolean;
+  autoPostPlatform: string | null;
+  posts: VideoPost[];
+}
+
 interface BudgetData {
   plan: string;
   providerMode: "mock" | "byok" | "platform_pool";
@@ -79,6 +109,32 @@ interface BudgetData {
   creditsBalance: number;
   cost: { doneCount: number; totalUsd: number; avgUsd: number | null };
   topupPack: { videos: number; priceUsd: number };
+}
+
+const POST_PLATFORM_ICONS: Record<string, React.ReactNode> = {
+  instagram: <Globe className="h-3.5 w-3.5" />,
+  youtube: <Film className="h-3.5 w-3.5" />,
+};
+
+function postRowClass(p: VideoPost): string {
+  if (p.sandbox) return "border-amber/40 bg-amber/10";
+  if (p.status === "published") return "border-signal/40 bg-signal/10";
+  if (p.status === "failed") return "border-danger/40 bg-danger/10";
+  return "border-ink-3 bg-ink";
+}
+
+function postIconClass(p: VideoPost): string {
+  if (p.sandbox) return "text-amber";
+  if (p.status === "published") return "text-signal";
+  if (p.status === "failed") return "text-danger";
+  return "text-bone-3";
+}
+
+function postStatusClass(p: VideoPost): string {
+  if (p.status === "published") return "bg-signal/20 text-signal";
+  if (p.status === "failed") return "bg-danger/20 text-danger";
+  if (p.status === "publishing") return "bg-signal/20 text-signal";
+  return "bg-ink text-bone-3";
 }
 
 const MODES: Array<{ key: VideoMode; label: string; hint: string }> = [
@@ -129,6 +185,7 @@ export function VideosClient() {
 
   const [selectedProductId, setSelectedProductId] = useState("");
   const [mode, setMode] = useState<VideoMode>("showcase");
+  const [autoPostPlatform, setAutoPostPlatform] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<ScriptPreview | null>(null);
@@ -193,6 +250,32 @@ export function VideosClient() {
     }
   }, []);
 
+  const [postingId, setPostingId] = useState<string | null>(null);
+
+  async function handlePost(videoId: string, platform: "instagram" | "youtube") {
+    setPostingId(`${videoId}:${platform}`);
+    try {
+      const res = await fetch(`/api/dashboard/videos/${videoId}/post`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ msg: data.error ?? "Post failed.", type: "error" });
+      } else if (data.success) {
+        setToast({ msg: `Posted to ${platform} ${data.sandbox ? "(sandbox)" : ""}.`, type: "success" });
+        fetchVideos(); // refresh to show new post status
+      } else {
+        setToast({ msg: data.error ?? "Post failed.", type: "error" });
+      }
+    } catch (e) {
+      setToast({ msg: e instanceof Error ? e.message : "Network error", type: "error" });
+    } finally {
+      setPostingId(null);
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       await fetchProducts();
@@ -226,7 +309,7 @@ export function VideosClient() {
       const res = await fetch("/api/dashboard/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: selectedProductId, mode }),
+        body: JSON.stringify({ productId: selectedProductId, mode, autoPostPlatform }),
       });
       const data = await res.json();
       if (res.status === 403) {
@@ -432,8 +515,8 @@ export function VideosClient() {
           </div>
         )}
 
-        {/* product + mode selectors */}
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        {/* product + mode + auto-post selectors */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
           <div>
             <label className="label mb-2 block text-bone-3">Product</label>
             <select
@@ -489,6 +572,18 @@ export function VideosClient() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="label mb-2 block text-bone-3">Auto-post</label>
+            <select className="field" value={autoPostPlatform ?? ""} onChange={(e) => setAutoPostPlatform(e.target.value || null)}>
+              <option value="">Off</option>
+              <option value="instagram">Instagram Reels</option>
+              <option value="youtube">YouTube Shorts</option>
+            </select>
+            <p className="mt-2 text-xs text-bone-3">
+              Requires an active connection in Integrations. Off = sandbox (demo).
+            </p>
           </div>
         </div>
 
@@ -824,16 +919,65 @@ export function VideosClient() {
                   )}
 
                   {v.renderStatus === "done" && (
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <p className="flex items-center gap-1.5 text-xs text-signal">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Ready to post
-                      </p>
+                    <div className="mt-2 space-y-2">
+                      {/* post status per platform */}
+                      {(v.posts?.length ?? 0) > 0 ? (
+                        v.posts.map((p) => (
+                          <div
+                            key={p.platform}
+                            className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${postRowClass(p)}`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {(() => POST_PLATFORM_ICONS[p.platform])() as React.ReactElement}
+                              <span className="font-medium capitalize">{p.platform}</span>
+                              {p.sandbox && <span className="label bg-amber/20 text-amber px-1.5 py-0.5">Sandbox</span>}
+                              <span className={`label ${postStatusClass(p)}`}>{p.status}</span>
+                            </div>
+                            {p.status === "published" && p.permalink && (
+                              <a href={p.permalink} target="_blank" rel="noopener noreferrer" className="text-signal hover:underline text-xs">
+                                View
+                              </a>
+                            )}
+                            {p.status === "failed" && (
+                              <button
+                                type="button"
+                                className="btn-ghost px-2.5 py-1 text-xs"
+                                onClick={() => handlePost(v.id, p.platform)}
+                                disabled={postingId === `${v.id}:${p.platform}`}
+                              >
+                                {postingId === `${v.id}:${p.platform}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                Retry
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        // No posts yet — show manual post buttons for each platform
+                        <div className="flex flex-wrap gap-2">
+                          {["instagram", "youtube"].map((platform) => (
+                            <button
+                              key={platform}
+                              type="button"
+                              className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5"
+                              onClick={() => handlePost(v.id, platform as "instagram" | "youtube")}
+                              disabled={postingId === `${v.id}:${platform}`}
+                            >
+                              {postingId === `${v.id}:${platform}` ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                POST_PLATFORM_ICONS[platform]
+                              )}
+                              Post to {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       {v.hasFile && (
                         <a
                           href={`/api/dashboard/videos/${v.id}/file?type=final`}
                           download
-                          className="btn-ghost px-3 py-1.5 text-xs"
+                          className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5 w-fit"
                           aria-label="Download video"
                         >
                           <Download className="h-3.5 w-3.5" />
