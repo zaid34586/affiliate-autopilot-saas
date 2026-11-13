@@ -97,6 +97,27 @@ function check(name, ok, extra = "") {
   check("script states real price 39.99", text.includes("39.99"));
   check("script states real rating 4.4", text.includes("4.4"));
 
+  // 7. budget API
+  res = await fetch(`${BASE}/api/dashboard/videos/budget`, { headers: { cookie: cookieHeader() } });
+  const budget = await res.json();
+  check(
+    "GET budget 200 + shape",
+    res.status === 200 &&
+      budget.plan === "free" &&
+      budget.monthly.limit === 2 &&
+      budget.today.renderCap === 1 &&
+      typeof budget.today.breakerTripped === "boolean" &&
+      typeof budget.providerMode === "string" &&
+      budget.topupPack.videos === 10 &&
+      budget.topupPack.priceUsd === 19,
+    JSON.stringify(budget).slice(0, 200)
+  );
+
+  // 8. videos page still renders after the budget additions
+  res = await fetch(`${BASE}/dashboard/videos`, { headers: { cookie: cookieHeader() } });
+  const html2 = await res.text();
+  check("videos page still 200", res.status === 200 && html2.includes("Render queue"), `status=${res.status}`);
+
   // cleanup
   const [ws] = await sql`select id from workspaces where owner_user_id = ${u.id}`;
   if (ws) await sql`delete from workspaces where id = ${ws.id}`;

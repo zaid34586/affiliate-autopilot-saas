@@ -29,7 +29,7 @@ export interface EnqueueResult {
   contentId: string;
   source: "plan" | "topup";
   sceneCount: number;
-  provider: "platform_pool" | "byok";
+  provider: "mock" | "byok" | "platform_pool";
 }
 
 export async function enqueueVideoRender(input: EnqueueInput): Promise<EnqueueResult> {
@@ -46,10 +46,14 @@ export async function enqueueVideoRender(input: EnqueueInput): Promise<EnqueueRe
   const product = productRows[0];
 
   // BYOK vs platform pool decides both the render key and cost attribution.
+  // Store the REAL mode (mock|byok|platform_pool) so a sandbox render is never
+  // labeled as platform-pool spend; quota treats non-BYOK as platform pool.
   const choice = await resolveProviderChoice(input.workspaceId);
-  const provider: "platform_pool" | "byok" = choice.mode === "byok" ? "byok" : "platform_pool";
+  const provider = choice.mode;
+  const quotaProvider: "platform_pool" | "byok" =
+    choice.mode === "byok" ? "byok" : "platform_pool";
 
-  const check = await checkRenderQuota(input.workspaceId, provider);
+  const check = await checkRenderQuota(input.workspaceId, quotaProvider);
   if (!check.decision.allowed) throw new QuotaExceededError(check.decision);
 
   const script = generateScript(

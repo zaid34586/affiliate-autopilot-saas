@@ -5,7 +5,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Clapperboard,
+  Download,
   Film,
+  Gauge,
   Loader2,
   Play,
   Plus,
@@ -63,6 +65,22 @@ interface QuotaError {
   };
 }
 
+interface BudgetData {
+  plan: string;
+  providerMode: "mock" | "byok" | "platform_pool";
+  monthly: { used: number; limit: number; remaining: number };
+  today: {
+    renders: number;
+    renderCap: number;
+    spendUsd: number;
+    spendCapUsd: number;
+    breakerTripped: boolean;
+  };
+  creditsBalance: number;
+  cost: { doneCount: number; totalUsd: number; avgUsd: number | null };
+  topupPack: { videos: number; priceUsd: number };
+}
+
 const MODES: Array<{ key: VideoMode; label: string; hint: string }> = [
   { key: "showcase", label: "Product showcase", hint: "One product, hero reveal" },
   { key: "listicle", label: "Listicle", hint: "Numbered reasons to buy" },
@@ -106,6 +124,7 @@ function StatusBadge({ status }: { status: RenderStatus }) {
 export function VideosClient() {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [videos, setVideos] = useState<VideoListItem[]>([]);
+  const [budget, setBudget] = useState<BudgetData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -163,17 +182,32 @@ export function VideosClient() {
     }
   }, []);
 
+  const fetchBudget = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard/videos/budget");
+      if (!res.ok) return;
+      const data = await res.json();
+      setBudget(data as BudgetData);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       await fetchProducts();
       await fetchVideos();
+      await fetchBudget();
     };
     void load();
     const id = setInterval(() => {
-      if (activeRef.current) void fetchVideos();
+      if (activeRef.current) {
+        void fetchVideos();
+        void fetchBudget();
+      }
     }, 2500);
     return () => clearInterval(id);
-  }, [fetchProducts, fetchVideos]);
+  }, [fetchProducts, fetchVideos, fetchBudget]);
 
   useEffect(() => {
     if (!toast) return;
@@ -205,12 +239,19 @@ export function VideosClient() {
         setToast({ msg: data.error ?? "Failed to queue the render.", type: "error" });
       } else {
         setToast({
-          msg: `Render queued — ${data.sceneCount} scenes, ${data.provider === "byok" ? "your key" : "platform pool"}.`,
+          msg: `Render queued — ${data.sceneCount} scenes, ${
+            data.provider === "byok"
+              ? "your key"
+              : data.provider === "mock"
+                ? "sandbox"
+                : "platform pool"
+          }.`,
           type: "success",
         });
         setPreview(null);
         activeRef.current = true;
         fetchVideos();
+        fetchBudget();
       }
     } catch (e) {
       setToast({ msg: e instanceof Error ? e.message : "Network error", type: "error" });
@@ -262,6 +303,7 @@ export function VideosClient() {
         setToast({ msg: "Re-queued for rendering.", type: "success" });
         activeRef.current = true;
         fetchVideos();
+        fetchBudget();
       }
     } catch (e) {
       setToast({ msg: e instanceof Error ? e.message : "Network error", type: "error" });
@@ -526,6 +568,134 @@ export function VideosClient() {
         )}
       </div>
 
+      {/* ── Budget & quotas ── */}
+      {budget && (
+        <div className="panel p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+              <Gauge className="h-4 w-4 text-signal" />
+              Budget & quotas
+            </h2>
+            <span className="label rounded border border-ink-4 bg-ink px-2 py-1 text-bone-3">
+              {budget.plan} plan
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* monthly quota */}
+            <div className="rounded-lg border border-ink-3 bg-ink px-4 py-3">
+              <p className="label text-bone-3">Monthly videos</p>
+              <p className="mt-1.5 text-lg font-semibold text-bone">
+                {budget.monthly.used}
+                <span className="text-sm font-normal text-bone-3"> / {budget.monthly.limit}</span>
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-4">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    budget.monthly.used >= budget.monthly.limit ? "bg-amber" : "bg-signal"
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.round((budget.monthly.used / Math.max(1, budget.monthly.limit)) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-bone-3">
+                {budget.monthly.remaining} remaining
+                {budget.creditsBalance > 0 ? ` + ${budget.creditsBalance} top-up credits` : ""}
+              </p>
+            </div>
+
+            {/* renders today */}
+            <div className="rounded-lg border border-ink-3 bg-ink px-4 py-3">
+              <p className="label text-bone-3">Renders today</p>
+              <p className="mt-1.5 text-lg font-semibold text-bone">
+                {budget.today.renders}
+                <span className="text-sm font-normal text-bone-3"> / {budget.today.renderCap}</span>
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-4">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    budget.today.renders >= budget.today.renderCap ? "bg-amber" : "bg-signal"
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.round((budget.today.renders / Math.max(1, budget.today.renderCap)) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-bone-3">Daily render cap (UTC)</p>
+            </div>
+
+            {/* spend today + breaker */}
+            <div className="rounded-lg border border-ink-3 bg-ink px-4 py-3">
+              <p className="label text-bone-3">Platform spend today</p>
+              <p className="mt-1.5 text-lg font-semibold text-bone">
+                ${budget.today.spendUsd.toFixed(2)}
+                <span className="text-sm font-normal text-bone-3"> / ${budget.today.spendCapUsd}</span>
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-4">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    budget.today.breakerTripped ? "bg-danger" : "bg-signal"
+                  }`}
+                  style={{
+                    width: `${Math.min(100, Math.round((budget.today.spendUsd / Math.max(0.01, budget.today.spendCapUsd)) * 100))}%`,
+                  }}
+                />
+              </div>
+              {budget.today.breakerTripped ? (
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-amber">
+                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  Circuit breaker active — resumes tomorrow
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-bone-3">Cost circuit breaker</p>
+              )}
+            </div>
+
+            {/* cost per video */}
+            <div className="rounded-lg border border-ink-3 bg-ink px-4 py-3">
+              <p className="label text-bone-3">Cost per finished reel</p>
+              <p className="mt-1.5 text-lg font-semibold text-bone">
+                {budget.cost.avgUsd != null ? `$${budget.cost.avgUsd.toFixed(3)}` : "—"}
+              </p>
+              <p className="mt-2 text-xs text-bone-3">
+                {budget.cost.doneCount} done · ${budget.cost.totalUsd.toFixed(3)} total
+              </p>
+              <p className="mt-1.5 text-xs text-bone-3">
+                Provider:{" "}
+                {budget.providerMode === "byok"
+                  ? "your Gemini key"
+                  : budget.providerMode === "mock"
+                    ? "sandbox (no spend)"
+                    : "platform pool"}
+              </p>
+            </div>
+          </div>
+
+          {/* top-up pack — informational until checkout ships */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ink-4 bg-ink px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-bone">
+                Top-up pack: {budget.topupPack.videos} extra videos · ${budget.topupPack.priceUsd}
+              </p>
+              <p className="mt-0.5 text-xs text-bone-3">
+                {budget.creditsBalance > 0
+                  ? `${budget.creditsBalance} credits in your balance — spent automatically after your monthly quota.`
+                  : "Used automatically once your monthly quota runs out. No rollover."}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="label rounded border border-ink-4 px-2 py-1 text-bone-3">
+                checkout coming with billing
+              </span>
+              <a href="/pricing" className="btn-ghost px-3 py-1.5 text-xs">
+                View plans
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Render queue ── */}
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -619,7 +789,13 @@ export function VideosClient() {
                   </div>
 
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-bone-3">
-                    <span>{v.provider === "byok" ? "Your key" : "Platform pool"}</span>
+                    <span>
+                      {v.provider === "byok"
+                        ? "Your key"
+                        : v.provider === "mock"
+                          ? "Sandbox"
+                          : "Platform pool"}
+                    </span>
                     {v.durationSec != null && <span>{v.durationSec}s</span>}
                     {v.costUsd != null && <span className="text-bone-2">{formatCost(v.costUsd)}</span>}
                     <span>{timeAgo(v.createdAt)}</span>
@@ -648,10 +824,23 @@ export function VideosClient() {
                   )}
 
                   {v.renderStatus === "done" && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs text-signal">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Ready to post
-                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <p className="flex items-center gap-1.5 text-xs text-signal">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Ready to post
+                      </p>
+                      {v.hasFile && (
+                        <a
+                          href={`/api/dashboard/videos/${v.id}/file?type=final`}
+                          download
+                          className="btn-ghost px-3 py-1.5 text-xs"
+                          aria-label="Download video"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Download
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
