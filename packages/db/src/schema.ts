@@ -25,6 +25,13 @@ export const productStatusEnum = pgEnum("product_status", ["active", "archived"]
 export const dmModeEnum = pgEnum("dm_mode", ["manual", "semi", "auto"]);
 export const dmStatusEnum = pgEnum("dm_status", ["queued", "sent", "failed", "blocked", "draft", "approved"]);
 export const channelEnum = pgEnum("channel", ["comment_reply", "dm", "whatsapp", "inapp_chat"]);
+export const creditsReasonEnum = pgEnum("credits_reason", [
+  "video_render",
+  "ai_words",
+  "topup",
+  "refund",
+  "bonus",
+]);
 
 // ───────────────────────── AUTH / WORKSPACE ─────────────────────────
 export const users = pgTable("users", {
@@ -223,25 +230,70 @@ export const contents = pgTable(
   (t) => [index("content_ws_status_idx").on(t.workspaceId, t.status)],
 );
 
-export const videos = pgTable("videos", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  contentId: uuid("content_id")
-    .notNull()
-    .references(() => contents.id, { onDelete: "cascade" }),
-  workspaceId: uuid("workspace_id")
-    .notNull()
-    .references(() => workspaces.id, { onDelete: "cascade" }),
-  mode: text("mode").notNull(), // showcase|listicle|ugc|testimonial|comparison
-  aspect: text("aspect").default("9:16"),
-  provider: text("provider").default("platform_pool"), // platform_pool|byok
-  renderStatus: renderStatusEnum("render_status").notNull().default("queued"),
-  storageKey: text("storage_key"),
-  thumbnailKey: text("thumbnail_key"),
-  durationSec: integer("duration_sec"),
-  costUsd: numeric("cost_usd", { precision: 8, scale: 4 }),
-  renderLog: jsonb("render_log").$type<Record<string, unknown>>(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const videos = pgTable(
+  "videos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contentId: uuid("content_id")
+      .notNull()
+      .references(() => contents.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    title: text("title"),
+    mode: text("mode").notNull(), // showcase|listicle|ugc|testimonial|comparison
+    aspect: text("aspect").default("9:16"),
+    provider: text("provider").default("platform_pool"), // platform_pool|byok
+    renderStatus: renderStatusEnum("render_status").notNull().default("queued"),
+    progressPct: integer("progress_pct").notNull().default(0), // 0–100 (render queue progress bar)
+    failureReason: text("failure_reason"), // set when renderStatus = failed
+    retryCount: integer("retry_count").notNull().default(0),
+    storageKey: text("storage_key"),
+    thumbnailKey: text("thumbnail_key"),
+    durationSec: integer("duration_sec"),
+    costUsd: numeric("cost_usd", { precision: 8, scale: 4 }),
+    renderLog: jsonb("render_log").$type<Record<string, unknown>>(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("vid_ws_status_idx").on(t.workspaceId, t.renderStatus)],
+);
+
+// ───────────────────────── VIDEO ENGINE (Phase 4) ─────────────────────────
+// Clip cache: same product/prompt ke clips reuse ho — re-render cost na lage.
+export const videoClips = pgTable(
+  "video_clips",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    promptHash: text("prompt_hash").notNull().unique(), // sha256(provider|prompt|duration|aspect)
+    provider: text("provider").notNull(), // veo|kling|pika|runway|mock
+    prompt: text("prompt").notNull(),
+    durationSec: integer("duration_sec").notNull().default(6),
+    aspect: text("aspect").notNull().default("9:16"),
+    storageKey: text("storage_key").notNull(),
+    costUsd: numeric("cost_usd", { precision: 8, scale: 4 }).default("0"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("vclip_provider_hash_idx").on(t.provider, t.promptHash)],
+);
+
+// Credits ledger: top-up packs, video render usage, refunds (plan.md §7).
+export const creditsLedger = pgTable(
+  "credits_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    delta: integer("delta").notNull(), // +add / −consume
+    reason: creditsReasonEnum("reason").notNull(), // video_render|ai_words|topup|refund|bonus
+    refId: uuid("ref_id"), // e.g. videos.id when reason = video_render
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("cl_ws_created_idx").on(t.workspaceId, t.createdAt)],
+);
 
 // ───────────────────────── POSTS ─────────────────────────
 export const posts = pgTable(
