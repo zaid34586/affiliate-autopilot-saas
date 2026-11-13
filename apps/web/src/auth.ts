@@ -65,8 +65,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     /**
-     * Sign-in ke waqt user ko DB mein upsert karo aur
-     * workspace auto-create kar do (OAuth + credentials dono pe).
+     * On sign-in, upsert the user into the DB and auto-create
+     * the workspace (for both OAuth and credentials flows).
      */
     async jwt({ token, user, account }) {
       if (user?.email) {
@@ -79,7 +79,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name ?? null,
             avatarUrl: user.image ?? null,
             authProvider: account?.provider ?? "credentials",
-            passwordHash: undefined, // credentials signup pe pehle se set hota hai
+            passwordHash: undefined, // already set during credentials signup
           })
           .onConflictDoUpdate({
             target: users.email,

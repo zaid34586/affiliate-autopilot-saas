@@ -52,24 +52,24 @@ export default async function CharacterPage() {
         <ul className="mt-4 space-y-2 text-sm text-bone-2">
           <li className="flex gap-3">
             <span className="status-dot mt-1.5 bg-signal-dim" />
-            Hamesha connected handle ka naam use kare — @{character.name}
+            Always uses the connected handle&apos;s name — @{character.name}
           </li>
           <li className="flex gap-3">
             <span className="status-dot mt-1.5 bg-signal-dim" />
-            Kabhi aisa claim na kare jo aapne na kaha ho
+            Never makes a claim you did not approve
           </li>
           <li className="flex gap-3">
             <span className="status-dot mt-1.5 bg-signal-dim" />
-            Negative/cuss comments pe polite decline — spam kabhi nahi
+            Politely declines negative or abusive comments — never spam
           </li>
         </ul>
 
         <div className="mt-5 rounded-lg border border-ink-3 bg-ink px-4 py-3">
           <p className="label text-amber">💭 thought journal · phase 5</p>
           <p className="mt-1.5 text-xs text-bone-3">
-            Ye roz strategy thoughts likhega — &ldquo;kal fitness niche mein
-            kya kaam karega?&rdquo; Abhi journal ka table live hai, writing
-            engine Phase 5 mein aayega.
+            It writes daily strategy thoughts — &ldquo;what should work in the
+            fitness niche tomorrow?&rdquo; The journal table is live now; the
+            writing engine arrives in Phase 5.
           </p>
         </div>
       </div>
@@ -77,8 +77,8 @@ export default async function CharacterPage() {
   ) : (
     <div className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-dashed border-ink-4 px-5 py-4">
       <p className="text-sm text-bone-2">
-        Character create nahi hua — onboarding complete karo, naam aapke handle
-        se apne aap ban jayega.
+        No character yet — finish onboarding and the name is created
+        automatically from your handle.
       </p>
       <Link href="/onboarding" className="btn-signal">
         Run setup →

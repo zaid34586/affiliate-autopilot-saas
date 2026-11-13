@@ -56,7 +56,7 @@ export function OnboardingWizard() {
 
   function submit() {
     if (!finalNiche || handle.trim().length < 2) {
-      setError("Niche aur handle dono zaroori hain.");
+      setError("Both your niche and handle are required.");
       return;
     }
     const fd = new FormData();
@@ -92,11 +92,11 @@ export function OnboardingWizard() {
       {step === 0 && (
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Aap kis niche mein kaam karoge?
+            Which niche will you work in?
           </h1>
           <p className="mt-2 text-sm text-bone-3">
-            Isi se AI products, scripts aur audience decide karega. Baad mein
-            settings mein change kar sakte ho.
+            The AI picks products, scripts, and audience from this. You can
+            change it later in Settings.
           </p>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[...NICHES, "Custom"].map((n) => (
@@ -118,7 +118,7 @@ export function OnboardingWizard() {
             <input
               autoFocus
               className="field mt-4"
-              placeholder="Apna niche likho — e.g. Pet Care"
+              placeholder="Type your niche — e.g. Pet Care"
               value={customNiche}
               onChange={(e) => setCustomNiche(e.target.value)}
             />
@@ -130,11 +130,11 @@ export function OnboardingWizard() {
       {step === 1 && (
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Kaunse affiliate networks?
+            Which affiliate networks?
           </h1>
           <p className="mt-2 text-sm text-bone-3">
-            Select karo — actual OAuth/key connect Phase 3 mein ek click se ho
-            jayega. Planner abhi se jaan lega.
+            Select them now — the actual OAuth/key connection happens in Phase 3
+            with one click. The planner records your choices.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {AFFILIATE_NETWORKS.map((n) => {
@@ -172,17 +172,17 @@ export function OnboardingWizard() {
       {step === 2 && (
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Aapka primary handle
+            Your primary handle
           </h1>
           <p className="mt-2 text-sm text-bone-3">
-            Is naam se aapka AI Character banega — yahi sab platforms pe use
-            hoga.
+            Your AI Character takes this name — it is used across every
+            platform.
           </p>
 
           <div className="mt-6 space-y-5">
             <div>
               <label className="label mb-2 block text-bone-3">
-                Social handle (character ka naam)
+                Social handle (your character&apos;s name)
               </label>
               <input
                 className="field"
@@ -243,11 +243,11 @@ export function OnboardingWizard() {
       {step === 3 && (
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Apne character se milo 🎭
+            Meet your character 🎭
           </h1>
           <p className="mt-2 text-sm text-bone-3">
-            Ye aapka AI persona hai — sochta hai, discuss karta hai, aur isi
-            identity se sab kuch karta hai.
+            This is your AI persona — it thinks, discusses, and acts under this
+            identity everywhere.
           </p>
 
           <div className="mt-6 grid-dots rounded-xl border border-ink-4 p-7 text-center">
@@ -261,9 +261,9 @@ export function OnboardingWizard() {
               {finalNiche || "niche"} · {tone} · {platforms[0]}
             </p>
             <p className="mx-auto mt-4 max-w-md text-sm text-bone-2">
-              &ldquo;Main {handle || "aap"} hoon — {finalNiche?.toLowerCase()}{" "}
-              audience ke liye roz strategy sochta hoon, comments ka reply
-              karta hoon, aur sahi product sahi log tak pahunchata hoon.&rdquo;
+              &ldquo;I&apos;m {handle || "you"} — I plan daily strategy for
+              the {finalNiche?.toLowerCase()} audience, reply to comments, and
+              put the right product in front of the right people.&rdquo;
             </p>
           </div>
         </div>

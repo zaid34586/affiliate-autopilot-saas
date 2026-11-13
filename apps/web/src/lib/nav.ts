@@ -16,7 +16,7 @@ export const MAIN_NAV: NavItem[] = [
     label: "Overview",
     href: "/dashboard",
     module: "Overview",
-    summary: "Command center — aaj kya hai, kya chal raha hai.",
+    summary: "Command center — today's activity and what's running right now.",
     bullets: ["Today at a glance", "Getting-started checklist", "Autopilot status"],
     phase: "live",
   },
@@ -26,7 +26,7 @@ export const MAIN_NAV: NavItem[] = [
     href: "/dashboard/products",
     module: "Product Finder",
     summary:
-      "AI best-sellers dhundhta hai, 0–100 score deta hai, roz khud refresh karta hai.",
+      "AI finds top-performing products, scores them 0–100, and refreshes daily.",
     bullets: [
       "Amazon / ClickBank / Digistore se auto-fetch",
       "AI product score (commission, trend, content-fit)",
@@ -54,7 +54,7 @@ export const MAIN_NAV: NavItem[] = [
     href: "/dashboard/content",
     module: "AI Content Studio",
     summary:
-      "Captions, ad copy, scripts — 3 variants, brand tone mein, compliance ke saath.",
+      "Captions, ad copy, scripts — 3 variants in your brand tone, with compliance checks.",
     bullets: [
       "Platform-wise captions + hooks",
       "Auto #ad + false-claim filter",
@@ -68,7 +68,7 @@ export const MAIN_NAV: NavItem[] = [
     href: "/dashboard/videos",
     module: "Video Engine",
     summary:
-      "Script se ready 9:16 reel — platform pool se, zero setup (BYOK optional).",
+      "Ready-to-post 9:16 reels from a script — zero setup (bring-your-own-key optional).",
     bullets: [
       "Showcase + listicle modes",
       "Voiceover + music + word captions",
@@ -95,10 +95,10 @@ export const MAIN_NAV: NavItem[] = [
     href: "/dashboard/dm-inbox",
     module: "DM Sales Engine",
     summary:
-      "Comment aaya → keyword trigger → Character 30 sec mein link DM kare.",
+      "Comment lands → keyword trigger → your Character DMs the link within 30 seconds.",
     bullets: [
       "Comment → auto-DM keyword triggers",
-      "Unified inbox sab platforms ka",
+      "Unified inbox across every platform",
       "Approval modes: draft / semi / full auto",
     ],
     phase: "Phase 3",
@@ -109,11 +109,11 @@ export const MAIN_NAV: NavItem[] = [
     href: "/dashboard/character",
     module: "🎭 Character",
     summary:
-      "Aapka AI persona — naam aapke handle se, sochta hai (thought journal) aur discuss karta hai.",
+      "Your AI persona — named after your handle, keeps a thought journal, and joins the conversation.",
     bullets: [
       "Profile = handle + personality + guardrails",
       "Daily thinking journal (strategy thoughts)",
-      "User + audience dono se discuss",
+      "Discuss with you and your audience",
     ],
     phase: "Phase 3–5",
   },
@@ -123,7 +123,7 @@ export const MAIN_NAV: NavItem[] = [
     href: "/dashboard/analytics",
     module: "Analytics",
     summary:
-      "Post → click → sale poora attributed. Earnings per product/post/platform.",
+      "Post → click → sale fully attributed. Earnings per product, post, and platform.",
     bullets: [
       "Clicks, CTR, conversions, earnings",
       "Revenue attribution (post → click → sale)",
@@ -141,7 +141,7 @@ export const BOTTOM_NAV: NavItem[] = [
     href: "/dashboard/connections",
     module: "Connections",
     summary:
-      "Saare social + affiliate accounts ek jagah — status, health, revoke.",
+      "All your social + affiliate accounts in one place — status, health, revoke.",
     bullets: [
       "Social: Instagram, TikTok, YouTube, X…",
       "Affiliate: Amazon, ClickBank, Digistore…",
@@ -155,11 +155,11 @@ export const BOTTOM_NAV: NavItem[] = [
     href: "/dashboard/autopilot",
     module: "Autopilot",
     summary:
-      "24/7 scheduler — research 4am, videos 6am, posts din bhar, report 11pm.",
+      "24/7 scheduler — research at 4am, videos at 6am, posts all day, report at 11pm.",
     bullets: [
       "Levels: Manual / Semi / Full / Fire-and-forget",
       "Daily caps + quiet hours + circuit breakers",
-      "Job history (kya hua, kyu fail)",
+      "Job history (what ran, why it failed)",
     ],
     phase: "Phase 5",
   },
@@ -168,7 +168,7 @@ export const BOTTOM_NAV: NavItem[] = [
     label: "Settings",
     href: "/dashboard/settings",
     module: "Settings",
-    summary: "Account, workspace, brand voice, AI keys, billing — sab yahin.",
+    summary: "Account, workspace, brand voice, AI keys, billing — all in one place.",
     bullets: [
       "Account / Workspace / Brand / AI",
       "Notifications + Security",

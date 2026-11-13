@@ -1,6 +1,6 @@
 /**
- * Pure validation helpers — server actions + client dono use karte hain.
- * Isi liye ye file "use server" mein nahi hai (tests bhi isi pe chalte hain).
+ * Pure validation helpers — used by both server actions and client code.
+ * That is why this file is not in "use server" (tests also run against it).
  */
 
 export function normalizeEmail(value: unknown): string {
@@ -23,7 +23,7 @@ export function validateSignup(input: {
   const password = String(input.password ?? "");
 
   if (name.length < 2) errors.name = ["Name kam se kam 2 characters ka ho"];
-  if (!isValidEmail(email)) errors.email = ["Sahi email daalo"];
+  if (!isValidEmail(email)) errors.email = ["Enter a valid email address"];
   if (password.length < 8)
     errors.password = ["Password kam se kam 8 characters ka ho"];
 

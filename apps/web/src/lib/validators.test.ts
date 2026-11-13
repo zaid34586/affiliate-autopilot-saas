@@ -36,7 +36,7 @@ describe("validators", () => {
     expect(errors.password).toBeDefined();
   });
 
-  it("validateSignup galat email + chhote naam pe dono errors", () => {
+  it("validateSignup reports both errors for invalid email and short name", () => {
     const errors = validateSignup({
       name: "R",
       email: "not-an-email",

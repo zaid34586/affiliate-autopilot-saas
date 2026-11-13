@@ -1,8 +1,8 @@
 import { findNavItem } from "@/lib/nav";
 
 /**
- * Har module ka Phase-0 skeleton — structure + empty state dikhta hai,
- * data uske phase mein aayega.
+ * Phase-0 skeleton for every module — shows structure + empty state;
+ * real data arrives when the module's phase ships.
  */
 export function ModulePage({
   href,
@@ -35,12 +35,12 @@ export function ModulePage({
           {item.phase === "live" ? "empty state" : `${item.phase} — not wired yet`}
         </span>
         <p className="mt-5 text-lg font-medium text-bone-2">
-          Abhi yahan data nahi hai
+          No data here yet
         </p>
         <p className="mt-1.5 max-w-md text-sm text-bone-3">
           {item.phase === "live"
-            ? "Upar wale checklist se shuru karo."
-            : `Phase 0 foundation ke baad — ${item.phase} mein ye module live ho jayega. Structure abhi se ready hai.`}
+            ? "Start with the checklist above."
+            : `This module goes live in ${item.phase}, right after the Phase 0 foundation. The structure is already in place.`}
         </p>
 
         <ul className="mt-7 grid w-full max-w-lg gap-2.5 text-left">

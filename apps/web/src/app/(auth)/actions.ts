@@ -13,7 +13,7 @@ export type AuthFormState =
   | { errors?: { email?: string[]; password?: string[]; name?: string[] }; message?: string }
   | undefined;
 
-/** SIGNUP — user + password hash banao, phir session set karo. */
+/** SIGNUP — create the user + password hash, then set the session. */
 export async function signup(
   _state: AuthFormState,
   formData: FormData,
@@ -32,7 +32,7 @@ export async function signup(
     .limit(1);
 
   if (existing) {
-    return { message: "Is email se account pehle se hai — login karo." };
+    return { message: "An account with this email already exists — sign in instead." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -43,7 +43,7 @@ export async function signup(
     authProvider: "credentials",
   });
 
-  // session set (jwt callback user + workspace DB mein upsert karega)
+  // session set (the JWT callback upserts the user + workspace into the DB)
   try {
     await nextAuthSignIn("credentials", {
       email,
@@ -52,14 +52,14 @@ export async function signup(
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      return { message: "Account bana par login fail hua — retry kar." };
+      return { message: "Account created, but sign-in failed — please try again." };
     }
     throw error; // redirect yahi hota hai
   }
   return undefined;
 }
 
-/** LOGIN — credentials verify karke session banao. */
+/** LOGIN — verify credentials and create the session. */
 export async function login(
   _state: AuthFormState,
   formData: FormData,
@@ -68,7 +68,7 @@ export async function login(
   const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
-    return { message: "Email aur password dono daalo." };
+    return { message: "Enter both your email and password." };
   }
 
   try {
@@ -79,7 +79,7 @@ export async function login(
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      return { message: "Email ya password galat hai." };
+      return { message: "Email or password is incorrect." };
     }
     throw error;
   }
@@ -91,7 +91,7 @@ export async function logout() {
   await nextAuthSignOut({ redirectTo: "/" });
 }
 
-/** Onboarding wizard se profile save */
+/** Save the profile from the onboarding wizard */
 export async function saveOnboardingProfile(
   _state: { message?: string } | undefined,
   formData: FormData,
@@ -101,7 +101,7 @@ export async function saveOnboardingProfile(
   const handle = String(formData.get("handle") ?? "").trim().replace(/^@/, "");
 
   if (!niche || !handle) {
-    return { message: "Niche aur handle dono zaroori hain." };
+    return { message: "Both your niche and handle are required." };
   }
 
   const session = await (await import("@/auth")).auth();

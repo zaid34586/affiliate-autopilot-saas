@@ -2,11 +2,11 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@aa/db";
 
-// Supabase session pooler (IPv4) ke liye prepare:false zaroori hai
+// prepare:false is required for the Supabase session pooler (IPv4)
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL missing — apps/web/.env.local check karo");
+  throw new Error("DATABASE_URL missing — check apps/web/.env.local");
 }
 
 // HMR ke during connection explosion rokne ke liye global cache

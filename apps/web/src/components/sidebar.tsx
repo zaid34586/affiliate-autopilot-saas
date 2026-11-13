@@ -106,7 +106,7 @@ export function Sidebar({ user, workspace }: Props) {
             <span className="label text-amber">Autopilot · standby</span>
           </div>
           <p className="mt-1.5 text-xs text-bone-3">
-            Scheduler Phase 5 mein live hoga.
+            The scheduler goes live in Phase 5.
           </p>
         </div>
 

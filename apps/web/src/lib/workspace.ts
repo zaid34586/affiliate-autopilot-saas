@@ -7,7 +7,7 @@ export type Workspace = typeof workspaces.$inferSelect;
 
 /**
  * User ka workspace lao — na mile toh turant bana do
- * (signup + OAuth dono ke baad automatic).
+ * (automatic after both signup and OAuth).
  */
 export async function getOrCreateWorkspace(userId: string): Promise<Workspace> {
   const existing = await db
@@ -45,8 +45,8 @@ export async function createWorkspace(userId: string, name: string): Promise<Wor
 }
 
 /**
- * Onboarding ke baad: brand profile + character create
- * (character ka naam = primary social handle).
+ * After onboarding: create the brand profile + character
+ * (the character's name = the primary social handle).
  */
 export async function setupWorkspaceIdentity(
   workspaceId: string,

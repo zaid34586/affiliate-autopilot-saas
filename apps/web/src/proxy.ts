@@ -7,9 +7,9 @@ function hasSessionCookie(req: NextRequest): boolean {
 }
 
 /**
- * Optimistic auth checks (bina DB ke — fast).
- * Asli security check dashboard layout ke `requireUser()` mein hai.
- * Note: Next 16 me middleware → proxy rename hua hai (nodejs runtime).
+ * Optimistic auth checks (no DB — fast).
+ * The real security check lives in the dashboard layout's `requireUser()`.
+ * Note: Next 16 renamed middleware → proxy (nodejs runtime).
  */
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

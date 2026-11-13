@@ -8,18 +8,17 @@ export default function NotFound() {
       </p>
       <p className="label mt-4 text-bone-3">page not found</p>
       <h1 className="mt-6 max-w-md text-2xl font-semibold tracking-tight md:text-3xl">
-        Ye page exist hi nahi karta — shayad link dead ho gaya.
+        This page does not exist — the link may be outdated.
       </h1>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-bone-2">
-        Tension nahi — autopilot waise bhi 24/7 chal raha hai. Neeche se
-        shuru karo.
+        No worries — the autopilot runs 24/7. Start from the links below.
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Link href="/" className="btn-signal px-6 py-3">
-          ← Home pe wapas
+          ← Back home
         </Link>
         <Link href="/features" className="btn-ghost px-6 py-3">
-          Features dekho
+          View features
         </Link>
       </div>
     </div>

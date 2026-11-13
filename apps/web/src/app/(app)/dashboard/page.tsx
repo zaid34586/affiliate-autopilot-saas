@@ -46,7 +46,7 @@ export default async function OverviewPage() {
     },
     {
       done: autopilot && autopilot.level !== "manual",
-      label: "Turn on Autopilot (Phase 5 mein live hoga)",
+      label: "Turn on Autopilot (goes live in Phase 5)",
       href: "/dashboard/autopilot",
       cta: "Open",
     },
@@ -176,7 +176,7 @@ export default async function OverviewPage() {
                 ?
               </div>
               <p className="mt-3 text-sm text-bone-2">
-                Character abhi nahi bana
+                Character not created yet
               </p>
               <Link href="/onboarding" className="btn-signal mt-4 inline-flex">
                 Create via setup

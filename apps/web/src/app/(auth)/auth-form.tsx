@@ -28,7 +28,7 @@ export function AuthForm({ mode, googleEnabled }: Props) {
       </h1>
       <p className="mt-1.5 text-sm text-bone-3">
         {mode === "login"
-          ? "Apna workspace kholo aur autopilot chalu karo."
+          ? "Open your workspace and switch on the autopilot."
           : "Free plan — 2 trial videos, no card needed."}
       </p>
 
@@ -116,7 +116,7 @@ export function AuthForm({ mode, googleEnabled }: Props) {
           <button
             type="button"
             onClick={() => {
-              // OAuth ke liye full-page reload zaroori hai (Google redirect)
+              // OAuth needs a full-page reload (Google redirect)
               // eslint-disable-next-line @next/next/no-location-assign-relative-destination
               window.location.href = "/api/auth/signin/google";
             }}
