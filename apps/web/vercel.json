@@ -1,4 +1,22 @@
 {
   "framework": "nextjs",
-  "regions": ["bom1"]
+  "regions": ["bom1"],
+  "crons": [
+    {
+      "path": "/api/cron/scheduler",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/publish",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/dm-triggers",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/render",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

@@ -5,10 +5,5 @@ import { AutopilotClient } from "./autopilot-client";
 export const metadata: Metadata = { title: "Autopilot" };
 
 export default function AutopilotPage() {
-  return (
-    <ModulePage
-      href="/dashboard/autopilot"
-      extra={<AutopilotClient />}
-    />
-  );
+  return <ModulePage href="/dashboard/autopilot" extra={<AutopilotClient />} />;
 }

@@ -50,7 +50,7 @@ export async function GET() {
 
     // Fetch posts for these videos (one per platform max).
     const videoIds = videoRows.map((v) => v.id);
-    let postsByVideo: Record<string, Array<{ platform: string; status: string; sandbox: boolean; permalink: string | null; platformPostId: string | null }>> = {};
+    const postsByVideo: Record<string, Array<{ platform: string; status: string; sandbox: boolean; permalink: string | null; platformPostId: string | null }>> = {};
     if (videoIds.length > 0) {
       const postRows = await db
         .select({
