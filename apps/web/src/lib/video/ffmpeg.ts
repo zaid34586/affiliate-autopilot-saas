@@ -3,19 +3,66 @@
  * Binary comes from ffmpeg-static (works locally and on Vercel Linux builds).
  */
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
 import { promisify } from "node:util";
-import ffmpegPath from "ffmpeg-static";
+import staticPath from "ffmpeg-static";
 
 const execFileAsync = promisify(execFile);
 
-export const FFMPEG: string | null = ffmpegPath;
+/**
+ * Turbopack rewrites __dirname-style paths inside bundled modules to virtual
+ * placeholders (e.g. \ROOT\node_modules\…), which breaks ffmpeg-static's
+ * exported path at runtime. Resolve the REAL path at runtime instead:
+ * env override → Node's own resolution from cwd → the static export if valid.
+ */
+let cachedFfmpeg: string | null | undefined;
+export function getFfmpegPath(): string | null {
+  if (cachedFfmpeg !== undefined) return cachedFfmpeg;
+
+  const candidates: string[] = [];
+  if (process.env.FFMPEG_PATH) candidates.push(process.env.FFMPEG_PATH);
+  const anchorPackages = [
+    path.join(process.cwd(), "package.json"),
+    path.join(process.cwd(), "apps", "web", "package.json"),
+  ];
+  for (const anchor of anchorPackages) {
+    try {
+      const requireFromAnchor = createRequire(anchor);
+      // Calling the package (not just resolving it) runs ffmpeg-static's own
+      // path logic with a REAL __dirname — returns the binary path directly.
+      const mod = requireFromAnchor("ffmpeg-static");
+      if (typeof mod === "string" && mod) candidates.push(mod);
+      // Fallback: package dir + platform binary name.
+      const entry = requireFromAnchor.resolve("ffmpeg-static");
+      if (entry) {
+        const binName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+        candidates.push(path.join(path.dirname(entry), binName));
+      }
+    } catch {
+      // try next anchor
+    }
+  }
+  if (staticPath && path.isAbsolute(staticPath)) candidates.push(staticPath);
+
+  cachedFfmpeg = candidates.find((c) => path.isAbsolute(c) && existsSync(c)) ?? null;
+  return cachedFfmpeg;
+}
 
 export const REEL_SIZE = { width: 1080, height: 1920 } as const; // 9:16
 
+/** FFmpeg won't create output directories — always ensure the parent exists. */
+async function ensureParentDir(filePath: string): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+}
+
 export async function runFFmpeg(args: string[]): Promise<void> {
-  if (!FFMPEG) throw new Error("FFmpeg binary is not available on this platform.");
+  const bin = getFfmpegPath();
+  if (!bin) throw new Error("FFmpeg binary is not available on this platform.");
   try {
-    await execFileAsync(FFMPEG, args, {
+    await execFileAsync(bin, args, {
       windowsHide: true,
       maxBuffer: 64 * 1024 * 1024,
       timeout: 180_000,
@@ -23,7 +70,9 @@ export async function runFFmpeg(args: string[]): Promise<void> {
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     const stderr = (e as { stderr?: string }).stderr;
-    throw new Error(`ffmpeg failed: ${(stderr || raw).slice(0, 600)}`);
+    // ffmpeg prints its banner first — the actual error is at the END of stderr.
+    const detail = stderr ? stderr.trim().slice(-800) : raw;
+    throw new Error(`ffmpeg failed: ${detail}`);
   }
 }
 
@@ -54,6 +103,7 @@ export interface SynthClipOptions {
  * animated gradient background + optional centered product image → 9:16 H.264.
  */
 export async function synthSceneClip(opts: SynthClipOptions): Promise<void> {
+  await ensureParentDir(opts.outPath);
   const dur = Math.max(1, opts.durationSec);
   const source = `gradients=s=${REEL_SIZE.width}x${REEL_SIZE.height}:d=${dur}:speed=0.06:nb_colors=2:seed=${opts.seed}:c0=0x141210:c1=0x243018`;
 
@@ -106,6 +156,7 @@ export interface AssembleOptions {
 export async function assembleReel(opts: AssembleOptions): Promise<void> {
   const n = opts.clipPaths.length;
   if (n === 0) throw new Error("assembleReel: no clips provided.");
+  await ensureParentDir(opts.outPath);
 
   const args: string[] = ["-y"];
   for (const p of opts.clipPaths) args.push("-i", p);
@@ -164,6 +215,7 @@ export async function extractThumbnail(
   outPath: string,
   atSec: number
 ): Promise<void> {
+  await ensureParentDir(outPath);
   await runFFmpeg([
     "-y",
     "-ss",

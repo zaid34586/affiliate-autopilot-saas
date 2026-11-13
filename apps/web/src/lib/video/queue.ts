@@ -13,7 +13,9 @@ import { hasRenderCharge, refundTopupCredit } from "./credits";
 
 export type VideoRow = typeof videos.$inferSelect;
 
-/** Atomically claim the oldest queued video for rendering (SKIP LOCKED). */
+/** Atomically claim the oldest queued video for rendering (SKIP LOCKED).
+ *  Column aliases map snake_case → the camelCase VideoRow shape (raw execute
+ *  would otherwise return unmapped column names). */
 export async function claimNextQueuedVideo(): Promise<VideoRow | null> {
   const res = await db.execute<VideoRow>(sql`
     UPDATE videos
@@ -28,7 +30,26 @@ export async function claimNextQueuedVideo(): Promise<VideoRow | null> {
       FOR UPDATE SKIP LOCKED
       LIMIT 1
     )
-    RETURNING *
+    RETURNING
+      id,
+      content_id AS "contentId",
+      workspace_id AS "workspaceId",
+      title,
+      mode,
+      aspect,
+      provider,
+      render_status AS "renderStatus",
+      progress_pct AS "progressPct",
+      failure_reason AS "failureReason",
+      retry_count AS "retryCount",
+      storage_key AS "storageKey",
+      thumbnail_key AS "thumbnailKey",
+      duration_sec AS "durationSec",
+      cost_usd AS "costUsd",
+      render_log AS "renderLog",
+      started_at AS "startedAt",
+      finished_at AS "finishedAt",
+      created_at AS "createdAt"
   `);
   const rows = (res as unknown as { rows?: VideoRow[] }).rows ?? (res as unknown as VideoRow[]);
   return rows?.[0] ?? null;
