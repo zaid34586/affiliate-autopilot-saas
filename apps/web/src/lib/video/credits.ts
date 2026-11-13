@@ -136,6 +136,22 @@ export async function refundTopupCredit(workspaceId: string, videoId: string): P
   });
 }
 
+/** True when this video consumed a top-up credit (ledger has a video_render entry for it). */
+export async function hasRenderCharge(workspaceId: string, videoId: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: creditsLedger.id })
+    .from(creditsLedger)
+    .where(
+      and(
+        eq(creditsLedger.workspaceId, workspaceId),
+        eq(creditsLedger.refId, videoId),
+        eq(creditsLedger.reason, "video_render")
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
 /** Mark a video failed; refunds the top-up credit if it consumed one. */
 export async function failVideo(
   workspaceId: string,
