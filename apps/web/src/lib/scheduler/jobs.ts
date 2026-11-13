@@ -17,6 +17,7 @@ import {
   brandProfiles,
   posts,
 } from "@aa/db";
+import { runAIScoring } from "@/lib/scoring/ai-score";
 import { and, desc, eq, gte, lt, inArray, sql, count, sum } from "drizzle-orm";
 import { generateScript, VIDEO_MODES, type VideoMode } from "@/lib/video/scripts";
 import { splitScriptIntoScenes } from "@/lib/video/scenes";
@@ -27,6 +28,7 @@ import { loadWorkspacePlugins, buildPluginConfig } from "@/lib/connections/plugi
 
 export type JobType =
   | "research"
+  | "ai_scoring"
   | "script"
   | "video"
   | "publish"
@@ -130,6 +132,12 @@ async function researchJob(ctx: JobContext): Promise<JobResult> {
     success: true,
     output: { productsFound: totalProductsFound, productsSaved: totalProductsSaved, niche },
   };
+}
+
+/** AI Scoring Job — 04:30 UTC: calculate 0-100 AI score for all active products. */
+async function aiScoringJob(ctx: JobContext): Promise<JobResult> {
+  const result = await runAIScoring(ctx.workspaceId);
+  return { success: true, output: { scored: result.scored, updated: result.updated } };
 }
 
 /** Script Job — 05:00 UTC: generate scripts for top-scored products without scripts. */
@@ -459,6 +467,7 @@ async function dmTriggersJob(ctx: JobContext): Promise<JobResult> {
 /** Registry of all scheduled jobs. */
 export const jobRegistry: Record<JobType, JobFn> = {
   research: researchJob,
+  ai_scoring: aiScoringJob,
   script: scriptJob,
   video: videoJob,
   publish: publishJob,

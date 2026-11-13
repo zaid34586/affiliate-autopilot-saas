@@ -103,6 +103,7 @@ export async function POST(req: Request) {
       // Define daily job sequence (order matters)
       const jobSequence: JobType[] = [
         "research",
+        "ai_scoring",
         "script",
         "video",
         "publish",
@@ -113,8 +114,8 @@ export async function POST(req: Request) {
 
       // Run each job in sequence
       for (const jobType of jobSequence) {
-        // Skip research/script/video in manual mode if they take too long
-        if (manualRun && ["research", "script", "video"].includes(jobType)) {
+        // Skip research/ai_scoring/script/video in manual mode if they take too long
+        if (manualRun && ["research", "ai_scoring", "script", "video"].includes(jobType)) {
           jobResults[jobType] = { success: true, error: "skipped in manual run" };
           continue;
         }
