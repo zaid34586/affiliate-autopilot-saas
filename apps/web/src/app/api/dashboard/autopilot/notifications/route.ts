@@ -4,6 +4,8 @@ import { jobsAudit, notifications } from "@aa/db";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/dashboard/autopilot/notifications
  * Returns in-app notifications from job completions, errors, etc.

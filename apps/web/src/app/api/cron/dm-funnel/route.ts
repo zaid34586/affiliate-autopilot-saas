@@ -92,6 +92,10 @@ export async function POST(req: Request) {
             funnelDailyCap,
             funnelSentToday: funnelSent,
             globalSentToday: workspaceSent,
+            quietHoursStart: funnel.quietHoursStart ?? undefined,
+            quietHoursEnd: funnel.quietHoursEnd ?? undefined,
+            skipNegativeSentiment: funnel.skipNegativeSentiment ?? true,
+            recipientSentiment: conv.context.recipientSentiment as string | null,
           });
 
           if (!spamCheck.allowed) {

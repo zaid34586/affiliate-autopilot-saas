@@ -471,6 +471,11 @@ export const dmFunnels = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     enabled: boolean("enabled").notNull().default(true),
+    // Quiet hours (UTC) - no DMs sent during this window
+    quietHoursStart: integer("quiet_hours_start").default(22), // 0-23 UTC
+    quietHoursEnd: integer("quiet_hours_end").default(8), // 0-23 UTC
+    // Sentiment skip - don't send to negative sentiment users
+    skipNegativeSentiment: boolean("skip_negative_sentiment").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -602,6 +607,27 @@ export const whatsappLinks = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("wl_ws_idx").on(t.workspaceId)],
+);
+ 
+// WhatsApp webhook events (for Phase 6 bot integration)
+export const whatsappWebhookEvents = pgTable(
+  "whatsapp_webhook_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    whatsappLinkId: uuid("whatsapp_link_id").references(() => whatsappLinks.id, { onDelete: "set null" }),
+    eventType: text("event_type").notNull(), // message|status|template
+    fromNumber: text("from_number"),
+    toNumber: text("to_number"),
+    messageBody: text("message_body"),
+    status: text("status"), // sent|delivered|read|failed
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull(),
+    processed: boolean("processed").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("wwe_ws_idx").on(t.workspaceId)],
 );
  
 // ───────────────────────── COMMENTS (audience se discuss) ─────────────────────────

@@ -20,6 +20,9 @@ export interface FunnelDefinition {
   id: string;
   name: string;
   steps: FunnelStep[]; // ordered by step.order
+  quietHoursStart: number | null;
+  quietHoursEnd: number | null;
+  skipNegativeSentiment: boolean;
 }
 
 export interface ConversationState {
@@ -212,6 +215,38 @@ export function buildNextMessage(
 }
 
 /**
+ * Check if current time is within quiet hours (UTC).
+ * Returns true if it's quiet hours (should NOT send).
+ */
+export function isQuietHours(
+  now: Date,
+  quietStart: number, // 0-23 UTC
+  quietEnd: number, // 0-23 UTC
+): boolean {
+  const hour = now.getUTCHours();
+  if (quietStart === quietEnd) return false; // disabled
+  if (quietStart < quietEnd) {
+    // e.g., 22 to 8 (same day wrap not needed since start < end means normal range)
+    return hour >= quietStart && hour < quietEnd;
+  } else {
+    // e.g., 22 to 8 (overnight) - wraps midnight
+    return hour >= quietStart || hour < quietEnd;
+  }
+}
+
+/**
+ * Check if sentiment should be skipped based on funnel settings.
+ * Returns true if should skip (don't send).
+ */
+export function shouldSkipSentiment(
+  skipNegative: boolean,
+  sentiment: string | null | undefined,
+): boolean {
+  if (!skipNegative) return false;
+  return sentiment === "negative";
+}
+
+/**
  * Anti-spam checks before sending a DM.
  * Returns { allowed: boolean, reason: string }.
  */
@@ -232,10 +267,28 @@ export function checkAntiSpam(
     funnelDailyCap: number; // from trigger/funnel config
     funnelSentToday: number; // DMs sent by this funnel today
     globalSentToday: number; // DMs sent by workspace today
+    // New: funnel settings for quiet hours and sentiment
+    quietHoursStart?: number;
+    quietHoursEnd?: number;
+    skipNegativeSentiment?: boolean;
+    recipientSentiment?: string | null;
   },
 ): AntiSpamCheckResult {
   const { recipientHandle, platform, funnelSentToday, globalSentToday, funnelDailyCap } = params;
   const handleLower = recipientHandle.toLowerCase().replace(/^@/, "");
+  const now = new Date();
+
+  // 0. Quiet hours check
+  if (params.quietHoursStart != null && params.quietHoursEnd != null) {
+    if (isQuietHours(now, params.quietHoursStart, params.quietHoursEnd)) {
+      return { allowed: false, reason: `Quiet hours (${params.quietHoursStart}:00-${params.quietHoursEnd}:00 UTC)` };
+    }
+  }
+
+  // 0b. Sentiment skip check
+  if (shouldSkipSentiment(params.skipNegativeSentiment ?? true, params.recipientSentiment)) {
+    return { allowed: false, reason: `Negative sentiment skipped` };
+  }
 
   // 1. Blocklist check
   for (const blocked of params.blocklist) {

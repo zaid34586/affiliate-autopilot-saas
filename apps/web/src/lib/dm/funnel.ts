@@ -25,6 +25,8 @@ import {
   getNextStepToSend,
   buildNextMessage,
   checkAntiSpam,
+  isQuietHours,
+  shouldSkipSentiment,
   type FunnelDefinition,
   type ConversationState,
   type FunnelStep,
@@ -68,6 +70,9 @@ export async function loadFunnels(workspaceId: string): Promise<FunnelDefinition
     id: f.id,
     name: f.name,
     steps: stepsByFunnel.get(f.id) ?? [],
+    quietHoursStart: f.quietHoursStart ?? null,
+    quietHoursEnd: f.quietHoursEnd ?? null,
+    skipNegativeSentiment: f.skipNegativeSentiment ?? true,
   }));
 }
 
