@@ -1142,3 +1142,76 @@ export const reportSchedules = pgTable(
     index("rs_next_gen_idx").on(t.nextGenerationAt),
   ],
 );
+
+// ───────────────────────── PHASE 7: Growth & Product Systems (Audit Log + Feature Flags) ─────────────────────────
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    actorType: text("actor_type").notNull().default("user"), // user|ai|system
+    actorId: text("actor_id").notNull(),
+    action: text("action").notNull(),
+    resourceType: text("resource_type"),
+    resourceId: text("resource_id"),
+    oldValues: jsonb("old_values").$type<Record<string, unknown>>(),
+    newValues: jsonb("new_values").$type<Record<string, unknown>>(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("audit_workspace_idx").on(t.workspaceId),
+    index("audit_user_idx").on(t.userId),
+    index("audit_action_idx").on(t.action),
+    index("audit_resource_idx").on(t.resourceType, t.resourceId),
+    index("audit_created_idx").on(t.createdAt),
+  ],
+);
+
+export const featureFlags = pgTable(
+  "feature_flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description"),
+    enabled: boolean("enabled").notNull().default(false),
+    rolloutPercentage: integer("rollout_percentage").notNull().default(0),
+    targeting: jsonb("targeting").$type<{
+      userIds?: string[];
+      workspaceIds?: string[];
+      roles?: string[];
+    }>().default({ userIds: [], workspaceIds: [], roles: [] }),
+    variants: jsonb("variants").$type<Array<{
+      key: string;
+      weight: number;
+      payload?: Record<string, unknown>;
+    }>>().default([{ key: "control", weight: 100 }]),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ff_key_idx").on(t.key), index("ff_enabled_idx").on(t.enabled)],
+);
+
+export const featureFlagEvaluations = pgTable(
+  "feature_flag_evaluations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    flagKey: text("flag_key").notNull(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    variant: text("variant").notNull(),
+    matched: boolean("matched").notNull().default(true),
+    context: jsonb("context").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ffe_flag_idx").on(t.flagKey),
+    index("ffe_workspace_idx").on(t.workspaceId),
+    index("ffe_created_idx").on(t.createdAt),
+  ],
+);
