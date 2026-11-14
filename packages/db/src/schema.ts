@@ -1215,3 +1215,175 @@ export const featureFlagEvaluations = pgTable(
     index("ffe_created_idx").on(t.createdAt),
   ],
 );
+
+// ───────────────────────── PHASE 7: Help Center + Changelog + Support ─────────────────────────
+export const helpArticles = pgTable(
+  "help_articles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    contentMd: text("content_md").notNull(),
+    contentHtml: text("content_html"),
+    category: text("category").notNull(),
+    tags: jsonb("tags").$type<string[]>().default([]),
+    isPublished: boolean("is_published").notNull().default(false),
+    isFeatured: boolean("is_featured").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    viewCount: integer("view_count").notNull().default(0),
+    helpfulCount: integer("helpful_count").notNull().default(0),
+    notHelpfulCount: integer("not_helpful_count").notNull().default(0),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    seoTitle: text("seo_title"),
+    seoDescription: text("seo_description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("help_article_slug_ws_uq").on(t.slug, t.workspaceId),
+    index("help_article_ws_idx").on(t.workspaceId),
+    index("help_article_cat_idx").on(t.category),
+    index("help_article_pub_idx").on(t.isPublished),
+    index("help_article_feat_idx").on(t.isFeatured),
+  ],
+);
+
+export const helpArticleFeedback = pgTable(
+  "help_article_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    articleId: uuid("article_id")
+      .notNull()
+      .references(() => helpArticles.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    isHelpful: boolean("is_helpful").notNull(),
+    comment: text("comment"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("help_feedback_article_idx").on(t.articleId)],
+);
+
+export const changelogEntries = pgTable(
+  "changelog_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    version: text("version").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    releaseDate: timestamp("release_date", { withTimezone: true }).notNull().defaultNow(),
+    categories: jsonb("categories").$type<string[]>().default([]),
+    items: jsonb("items").$type<Array<{
+      type: "feature" | "fix" | "improvement" | "breaking" | "security";
+      title: string;
+      description: string;
+    }>>().default([]),
+    isPublished: boolean("is_published").notNull().default(false),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("changelog_pub_idx").on(t.isPublished, t.releaseDate)],
+);
+
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    bodyMd: text("body_md").notNull(),
+    bodyHtml: text("body_html"),
+    type: text("type").notNull().default("info"), // info|warning|success|maintenance|feature
+    priority: integer("priority").notNull().default(0),
+    targetRoles: jsonb("target_roles").$type<string[]>().default([]),
+    targetWorkspaces: jsonb("target_workspaces").$type<string[]>().default([]),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull().defaultNow(),
+    endAt: timestamp("end_at", { withTimezone: true }),
+    isDismissible: boolean("is_dismissible").notNull().default(true),
+    ctaText: text("cta_text"),
+    ctaUrl: text("cta_url"),
+    isPublished: boolean("is_published").notNull().default(false),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ann_ws_idx").on(t.workspaceId),
+    index("ann_active_idx").on(t.isPublished, t.startAt, t.endAt),
+  ],
+);
+
+export const announcementDismissals = pgTable(
+  "announcement_dismissals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    announcementId: uuid("announcement_id")
+      .notNull()
+      .references(() => announcements.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("ann_dismissal_uq").on(t.announcementId, t.workspaceId, t.userId)],
+);
+
+export const supportTickets = pgTable(
+  "support_tickets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    descriptionMd: text("description_md").notNull(),
+    category: text("category").notNull(), // technical|billing|feature_request|bug_report|general
+    priority: text("priority").notNull().default("medium"), // low|medium|high|urgent
+    status: text("status").notNull().default("open"), // open|in_progress|waiting_customer|resolved|closed
+    assignedTo: uuid("assigned_to").references(() => users.id, { onDelete: "set null" }),
+    tags: jsonb("tags").$type<string[]>().default([]),
+    firstResponseAt: timestamp("first_response_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    satisfactionRating: integer("satisfaction_rating"), // 1-5
+    satisfactionFeedback: text("satisfaction_feedback"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("st_ws_idx").on(t.workspaceId),
+    index("st_user_idx").on(t.userId),
+    index("st_status_idx").on(t.status),
+    index("st_priority_idx").on(t.priority),
+    index("st_created_idx").on(t.createdAt),
+  ],
+);
+
+export const ticketMessages = pgTable(
+  "ticket_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ticketId: uuid("ticket_id")
+      .notNull()
+      .references(() => supportTickets.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    isStaff: boolean("is_staff").notNull().default(false),
+    bodyMd: text("body_md").notNull(),
+    bodyHtml: text("body_html"),
+    isInternal: boolean("is_internal").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("tm_ticket_idx").on(t.ticketId)],
+);
