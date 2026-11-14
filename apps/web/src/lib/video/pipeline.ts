@@ -7,7 +7,7 @@
  * add GEMINI_API_KEY / ELEVENLABS_API_KEY and the same pipeline renders with Veo + voice.
  */
 import { db } from "@/lib/db";
-import { contents, products, videoClips } from "@aa/db";
+import { contents, products, videoClips, brandProfiles } from "@aa/db";
 import { and, eq } from "drizzle-orm";
 import { EST_COST_USD } from "./constants";
 import { buildAss, computeWordTimings } from "./captions";
@@ -38,7 +38,7 @@ export class NonRetryableError extends Error {
 export interface RenderStats {
   clipsGenerated: number;
   cacheHits: number;
-  voiceover: "synthesized" | "skipped_no_key" | "failed";
+  voiceover: "synthesized" | "synthesized_cloned" | "skipped_no_key" | "failed";
   durationSec: number;
   costUsd: number;
   mode: "mock" | "live";
@@ -170,6 +170,14 @@ export async function renderVideoJob(video: VideoRow): Promise<RenderOutcome> {
       : [];
     const product = productRows[0] ?? null;
 
+    // Fetch cloned voice ID from brand profile
+    const [brand] = await db
+      .select({ clonedVoiceId: brandProfiles.clonedVoiceId })
+      .from(brandProfiles)
+      .where(eq(brandProfiles.workspaceId, video.workspaceId))
+      .limit(1);
+    const clonedVoiceId = brand?.clonedVoiceId || null;
+
     await setProgress(video.id, 8);
     const { provider, choice } = await getVideoProvider(video.workspaceId);
     const providerMode: "mock" | "live" = choice.mode === "mock" ? "mock" : "live";
@@ -207,18 +215,19 @@ export async function renderVideoJob(video: VideoRow): Promise<RenderOutcome> {
     const totalDurationSec = sceneDurations.reduce((a, b) => a + b, 0);
 
     // Voiceover (optional — skip honestly when no ELEVENLABS_API_KEY).
+    // Use cloned voice if available, otherwise fallback to preset.
     let voiceoverPath: string | null = null;
     let voiceCostUsd = 0;
     let voiceStatus: RenderStats["voiceover"] = "skipped_no_key";
     const narration = script?.fullText ?? scenes.map((s) => s.narration).join(" ");
     try {
-      const voice = await synthesizeVoiceover(narration);
+      const voice = await synthesizeVoiceover(narration, { clonedVoiceId: clonedVoiceId || undefined });
       if (voice) {
         const rel = joinKey(video.id, "voiceover.mp3");
         await saveBuffer(rel, voice.bytes);
         voiceoverPath = absolutePath(rel);
         voiceCostUsd = voice.costUsd;
-        voiceStatus = "synthesized";
+        voiceStatus = clonedVoiceId ? "synthesized_cloned" : "synthesized";
       }
     } catch (e) {
       voiceStatus = "failed"; // degrade honestly: reel renders without voice

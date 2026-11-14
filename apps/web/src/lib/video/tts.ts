@@ -1,5 +1,6 @@
 /**
  * Phase 4 S3 — ElevenLabs voiceover (ROADMAP P4: "ElevenLabs voiceover (preset voices)").
+ * Phase 6 — Voice Clone support (custom voice from user sample).
  * Uses the platform-pool ELEVENLABS_API_KEY when set; returns null otherwise so the
  * render pipeline can continue voiceover-less and record the skip honestly.
  * Preset voices: extend PRESET_VOICES with your own voice IDs from the ElevenLabs lab.
@@ -29,15 +30,18 @@ function estimateCost(chars: number): number {
 /**
  * Synthesize narration for the whole reel. Returns null when no key is
  * configured (render continues without voiceover — logged as skipped).
+ * Supports both preset voices and cloned voices.
  */
 export async function synthesizeVoiceover(
   text: string,
-  voice: PresetVoiceKey = DEFAULT_VOICE
+  options: { voice?: PresetVoiceKey; clonedVoiceId?: string } = {}
 ): Promise<VoiceoverResult | null> {
   const key = process.env.ELEVENLABS_API_KEY?.trim();
   if (!key) return null;
 
-  const voiceId = PRESET_VOICES[voice].id;
+  const { voice = DEFAULT_VOICE, clonedVoiceId } = options;
+  const voiceId = clonedVoiceId || PRESET_VOICES[voice].id;
+  
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
     method: "POST",
     headers: { "xi-api-key": key, "content-type": "application/json" },
@@ -55,4 +59,14 @@ export async function synthesizeVoiceover(
 
   const bytes = Buffer.from(await res.arrayBuffer());
   return { bytes, voiceId, costUsd: estimateCost(text.length) };
+}
+
+/**
+ * Synthesize voiceover using a cloned voice (for video pipeline)
+ */
+export async function synthesizeVoiceoverWithClonedVoice(
+  text: string,
+  clonedVoiceId: string
+): Promise<VoiceoverResult | null> {
+  return synthesizeVoiceover(text, { clonedVoiceId });
 }

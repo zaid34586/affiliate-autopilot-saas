@@ -127,6 +127,10 @@ export const brandProfiles = pgTable("brand_profiles", {
   languages: jsonb("languages").$type<string[]>().default(["en"]),
   bannedWords: jsonb("banned_words").$type<string[]>().default([]),
   voiceSampleRef: text("voice_sample_ref"),
+  clonedVoiceId: text("cloned_voice_id"),
+  voiceCloneStatus: text("voice_clone_status").default("none"), // none|pending|completed|failed
+  voiceCloneError: text("voice_clone_error"),
+  voiceCloneCreatedAt: timestamp("voice_clone_created_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
