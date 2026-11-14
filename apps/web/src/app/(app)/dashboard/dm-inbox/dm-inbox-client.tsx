@@ -24,6 +24,7 @@ import {
   Tv,
   Save,
   Plus,
+  Sparkles,
   } from "lucide-react";
 
 type DMStatus = "queued" | "sent" | "failed" | "blocked" | "draft" | "approved";
@@ -118,6 +119,7 @@ export function DmInboxClient() {
   const [editBody, setEditBody] = useState("");
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [editingTrigger, setEditingTrigger] = useState<DMTrigger | null>(null);
+  const [suggesting, setSuggesting] = useState<string | null>(null);
 
   async function fetchData() {
     try {
@@ -206,6 +208,28 @@ export function DmInboxClient() {
     if (msg) {
       setEditingId(id);
       setEditBody(msg.body);
+    }
+  }
+
+  async function suggestDM(msg: DMMessage) {
+    setSuggesting(msg.id);
+    try {
+      const res = await fetch(`/api/dashboard/dm-inbox/${msg.id}/suggest`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to generate suggestion");
+      // Fill the existing edit box — user reviews before saving (no silent mutation).
+      setEditingId(msg.id);
+      setEditBody(data.reply);
+      setToast({
+        msg: `Suggestion ready (${data.intent}, engine ${data.engine}) — review, then Save`,
+        type: "success",
+      });
+    } catch (e: unknown) {
+      setToast({ msg: e instanceof Error ? e.message : "Failed to suggest", type: "error" });
+    } finally {
+      setSuggesting(null);
     }
   }
 
@@ -306,10 +330,16 @@ export function DmInboxClient() {
 
   if (loading) {
     return (
-      <div className="grid-dots flex items-center justify-center py-16">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-6 w-6 text-signal animate-spin" />
-          <span className="label text-bone-3">Loading DM inbox…</span>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">DM Inbox</h1>
+          <p className="text-sm text-bone-3">Comment → DM automation — unified inbox for all platforms</p>
+        </div>
+        <div className="grid-dots flex items-center justify-center py-16">
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 text-signal animate-spin" />
+            <span className="label text-bone-3">Loading DM inbox…</span>
+          </div>
         </div>
       </div>
     );
@@ -432,6 +462,21 @@ export function DmInboxClient() {
 
                     {/* Actions */}
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {["draft", "queued", "approved"].includes(msg.status) && (
+                        <button
+                          onClick={() => suggestDM(msg)}
+                          disabled={suggesting === msg.id}
+                          className="btn-ghost text-xs flex items-center gap-1"
+                          title="Suggest a reply in your character's voice (rules-v1)"
+                        >
+                          {suggesting === msg.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
+                          AI suggest
+                        </button>
+                      )}
                       {msg.status === "draft" && (
                         <>
                           <button onClick={() => editDM(msg.id)} className="btn-ghost text-xs" title="Edit">
