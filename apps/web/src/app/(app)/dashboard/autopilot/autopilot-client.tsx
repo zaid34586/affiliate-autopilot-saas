@@ -488,7 +488,7 @@ export function AutopilotClient() {
     try {
       const [jobsRes, configRes, cbRes, notifRes] = await Promise.all([
         fetch("/api/dashboard/autopilot/jobs"),
-        fetch("/api/dashboard/autopilot/config"),
+        fetch("/api/dashboard/autopilot"),
         fetch("/api/dashboard/autopilot/circuit-breakers"),
         fetch("/api/dashboard/autopilot/notifications"),
       ]);
@@ -512,7 +512,7 @@ export function AutopilotClient() {
     setConfig(newConfig);
     setSaving(true);
     try {
-      const res = await fetch("/api/dashboard/autopilot/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newConfig) });
+      const res = await fetch("/api/dashboard/autopilot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newConfig) });
       if (!res.ok) throw new Error("Failed to save");
       toastMsg("Configuration saved", "success");
     } catch (e) { toastMsg((e as Error).message, "error"); } finally { setSaving(false); }

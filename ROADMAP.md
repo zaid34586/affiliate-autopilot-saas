@@ -235,21 +235,21 @@ LAYER 4: BUSINESS SYSTEM   → billing, team, admin, support, security, infra
 **🎯 Goal:** Flagship feature — script se ready reel, platform pool se (user zero setup).
 
 ### Deliverables
-- [ ] **Video provider abstraction** (interface: Veo / Kling / Pika / Runway — swap ho sake)
-- [ ] Platform Pool: hamari Gemini/Veo key (server-side secret) + cost tracking `cost_usd/job`
-- [ ] **BYOK slot:** Settings → apni Gemini key paste → −30% discount applied
-- [ ] Prompt templates per mode (showcase, listicle)
-- [ ] Scene splitter: script → 5–6 scenes → parallel clip generation
-- [ ] FFmpeg worker (Docker): clips + voiceover + music + word-level captions → 9:16 MP4
-- [ ] ElevenLabs voiceover (preset voices)
-- [ ] Music library + auto-ducking
-- [ ] Render queue: progress bar, retry, failure reasons, re-render
-- [ ] **Render budget dashboard:** aaj ka spend, cost/video, plan quota used
-- [ ] **Cost controls:** per-plan daily caps, daily $ circuit breaker, clip cache (same product reuse)
-- [ ] 2 modes live: product showcase + listicle
-- [ ] Video → auto-post reels (IG Reels / YouTube Shorts + TikTok jab audit ho)
-- [ ] Media library (rendered videos, thumbnail picker)
-- [ ] Quotas: plan-wise video limits (8/30/120) + top-up pack purchase ($19/10 videos)
+- [x] **Video provider abstraction** (interface: Veo / Kling / Pika / Runway — swap ho sake) — live: `mock` | `byok` | `platform_pool`
+- [x] Platform Pool: hamari Gemini/Veo key (server-side secret) + cost tracking `cost_usd/job` — cost tracking live; real Veo key = env pending (mock renders labelled "Sandbox")
+- [x] **BYOK slot:** Settings → apni Gemini key paste → −30% discount applied
+- [x] Prompt templates per mode (showcase, listicle)
+- [x] Scene splitter: script → 5–6 scenes → parallel clip generation
+- [x] FFmpeg worker: clips + voiceover + music + word-level captions → 9:16 MP4 (ffmpeg-static, Vercel serverless — Docker worker backlog)
+- [x] ElevenLabs voiceover (preset voices) — optional key + pipeline support
+- [ ] Music library + auto-ducking → **not built** (caption/voiceover live; music backlog)
+- [x] Render queue: progress bar, retry, failure reasons, re-render
+- [x] **Render budget dashboard:** aaj ka spend, cost/video, plan quota used
+- [x] **Cost controls:** per-plan daily caps, daily $ circuit breaker (clip cache → backlog)
+- [x] 2 modes live: product showcase + listicle
+- [x] Video → auto-post reels (IG Reels / YouTube Shorts + TikTok jab audit ho)
+- [ ] Media library (rendered videos, thumbnail picker) → partial: list + auto-thumbnail + player + download live; manual picker backlog
+- [x] Quotas: plan-wise video limits (8/30/120) + top-up pack purchase ($19/10 videos)
 
 ### ✅ DoD
 ```
@@ -268,20 +268,20 @@ LAYER 4: BUSINESS SYSTEM   → billing, team, admin, support, security, infra
 
 **🎯 Goal:** "Set it and forget it" — product actually automatic ho jaye.
 
-### Module A — Autopilot Scheduler
-- [ ] Saare cron jobs (plan.md §12): research 4am → scripts 5am → videos 6am → schedule 9am → posts day-long → analytics 10pm → report 11pm
-- [ ] Autopilot levels: Manual / Semi / Full / Fire-and-forget (config UI)
-- [ ] Daily post caps per platform, quiet hours, duplicate prevention (48h rule)
-- [ ] Circuit breakers (API fail → pause + alert), pause/resume switch
-- [ ] Job audit table + job history UI (kya hua, kyu fail)
-- [ ] Notifications: in-app + email (new winner product, failed post, daily digest)
+### Module A — Autopilot Scheduler ✅ (built, S1–S4; user approved)
+- [x] Saare cron jobs (plan.md §12): research 4am → ai_scoring 4:30 → script → video → publish → analytics → optimizer → report (vercel.json crons: scheduler 04:00, publish */30, dm-triggers */2, render */5)
+- [x] Autopilot levels: Manual / Semi / Full / Fire-and-forget (config UI)
+- [x] Daily post caps per platform, quiet hours (duplicate prevention 48h rule → Module C/D ke saath)
+- [x] Circuit breakers (API fail → pause + alert), pause/resume switch
+- [x] Job audit table + job history UI (kya hua, kyu fail)
+- [x] Notifications: in-app ✅ (job failures, digest) — email → ESP integration pending
 
-### Module B — Analytics & Reports
-- [ ] Platform insights sync (IG/YT/TikTok APIs, 3–6× daily)
-- [ ] Affiliate conversions sync (network APIs / import)
-- [ ] Dashboard: clicks, CTR, conversions, earnings per product/post/platform
-- [ ] **Weekly AI report** (email): kya chala, kya nahi, next week plan
-- [ ] Revenue attribution: post → click → sale
+### Module B — Analytics & Reports ✅ (built; user approval pending)
+- [x] Platform insights sync (IG/YT APIs via plugins, cron every 4h — TikTok stub until content audit)
+- [x] Affiliate conversions sync (Amazon/Impact/Digistore live; ClickBank/CJ/ShareASale partial stubs)
+- [x] Dashboard: clicks, CTR, conversions, earnings per product/post/platform → `/dashboard/analytics`
+- [ ] **Weekly AI report** (email): kya chala, kya nahi, next week plan → generation live (`POST /api/dashboard/analytics?type=weekly`); email delivery → ESP pending
+- [x] Revenue attribution: post → click → sale (analytics_daily per post/platform/day)
 
 ### Module C — 🎭 Character v2 (Discussion Engine)
 - [ ] **User se discuss:** chat — "kal kya post karein?" → character reasoning ke saath jawab
