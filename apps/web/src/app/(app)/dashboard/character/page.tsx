@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/session";
 import { ModulePage } from "@/components/module-page";
 import { CharacterChat } from "./character-chat";
+import { CommentsInbox } from "./comments-inbox";
 
 export const metadata: Metadata = { title: "Character" };
 
@@ -78,6 +79,9 @@ export default async function CharacterPage() {
 
       {/* Phase 5 Module C — discussion chat */}
       <CharacterChat />
+
+      {/* Phase 5 Module C — audience comments in character voice */}
+      <CommentsInbox />
     </>
   ) : (
     <div className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-dashed border-ink-4 px-5 py-4">

@@ -382,6 +382,13 @@ export const conversions = pgTable("conversions", {
 });
 
 // ───────────────────────── DM ENGINE ─────────────────────────
+export const commentStatusEnum = pgEnum("comment_status", [
+  "pending",
+  "approved",
+  "replied",
+  "dismissed",
+]);
+
 export const dmTriggers = pgTable("dm_triggers", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id")
@@ -424,6 +431,33 @@ export const dmMessages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("dm_ws_status_idx").on(t.workspaceId, t.status)],
+);
+
+// ───────────────────────── COMMENTS (audience se discuss) ─────────────────────────
+export const postComments = pgTable(
+  "post_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    postId: uuid("post_id").references(() => posts.id, { onDelete: "set null" }),
+    characterId: uuid("character_id").references(() => characters.id, {
+      onDelete: "set null",
+    }),
+    platform: text("platform").notNull(), // instagram|youtube|tiktok|facebook|x
+    authorHandle: text("author_handle").notNull(),
+    body: text("body").notNull(),
+    sentiment: text("sentiment"), // positive|neutral|negative
+    suggestedReply: text("suggested_reply"),
+    status: commentStatusEnum("status").notNull().default("pending"),
+    approvalMode: dmModeEnum("approval_mode").notNull().default("semi"),
+    repliedAt: timestamp("replied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("pc_ws_status_idx").on(t.workspaceId, t.status)],
 );
 
 // ───────────────────────── AUTOPILOT / OPS ─────────────────────────
