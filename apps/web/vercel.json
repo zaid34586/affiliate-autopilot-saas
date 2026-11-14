@@ -8,19 +8,19 @@
     },
     {
       "path": "/api/cron/publish",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/dm-triggers",
-      "schedule": "*/2 * * * *"
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/render",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/analytics",
-      "schedule": "0 */4 * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/thinking",
@@ -28,11 +28,11 @@
     },
     {
       "path": "/api/cron/dm-funnel",
-      "schedule": "*/2 * * * *"
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/optimizer",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 10 * * *"
     },
     {
       "path": "/api/cron/reports",
