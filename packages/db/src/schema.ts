@@ -388,13 +388,33 @@ export const commentStatusEnum = pgEnum("comment_status", [
   "replied",
   "dismissed",
 ]);
-
+ 
+// Platform-specific trigger configs (TikTok, X, Facebook have different APIs)
+export const triggerPlatformEnum = pgEnum("trigger_platform", [
+  "instagram",
+  "youtube",
+  "tiktok",
+  "facebook",
+  "x",
+  "whatsapp",
+]);
+ 
+export const triggerSourceEnum = pgEnum("trigger_source", [
+  "comment",
+  "dm",
+  "mention",
+  "hashtag",
+  "story_reply",
+]);
+ 
 export const dmTriggers = pgTable("dm_triggers", {
   id: uuid("id").primaryKey().defaultRandom(),
   workspaceId: uuid("workspace_id")
     .notNull()
     .references(() => workspaces.id, { onDelete: "cascade" }),
   postId: uuid("post_id"),
+  platform: triggerPlatformEnum("platform").notNull().default("instagram"),
+  source: triggerSourceEnum("source").notNull().default("comment"),
   keywords: jsonb("keywords").$type<{ set: string[]; semantic: boolean }>().default({
     set: ["link", "price", "buy", "dm"],
     semantic: true,
@@ -559,7 +579,31 @@ export const dmDailyCaps = pgTable(
     uniqueIndex("ddc_ws_platform_day_uq").on(t.workspaceId, t.platform, t.day),
   ],
 );
-
+ 
+// WhatsApp Click-to-Chat link generator (for bio, posts, stories)
+export const whatsappLinks = pgTable(
+  "whatsapp_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // e.g., "Main bio link", "Product X promo"
+    phoneNumber: text("phone_number").notNull(), // full number with country code, e.g., "919876543210"
+    defaultMessage: text("default_message"), // pre-filled message
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    utmContent: text("utm_content"),
+    clicks: integer("clicks").notNull().default(0),
+    conversions: integer("conversions").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("wl_ws_idx").on(t.workspaceId)],
+);
+ 
 // ───────────────────────── COMMENTS (audience se discuss) ─────────────────────────
 export const postComments = pgTable(
   "post_comments",
