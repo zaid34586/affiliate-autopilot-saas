@@ -65,6 +65,28 @@ export interface CopilotResult {
   actions: CopilotAction[];
   engine: "llm-v1";
   conversationId?: string;
+  commandCenter?: {
+    summary: {
+      totalOpportunities: number;
+      criticalCount: number;
+      highCount: number;
+      estimatedRevenueImpact: number;
+      topPriority: {
+        id: string;
+        type: string;
+        title: string;
+        priority: string;
+        impactScore: number;
+      } | null;
+    };
+    topRecommendation: {
+      id: string;
+      type: string;
+      title: string;
+      priority: string;
+      impactScore: number;
+    } | null;
+  };
 }
 
 export interface CopilotMessage {

@@ -3,6 +3,10 @@
   "regions": ["bom1"],
   "crons": [
     {
+      "path": "/api/cron/command-center",
+      "schedule": "0 1 * * *"
+    },
+    {
       "path": "/api/cron/scheduler",
       "schedule": "0 4 * * *"
     },

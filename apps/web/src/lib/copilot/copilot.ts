@@ -32,6 +32,7 @@ import {
   CopilotResult,
   CopilotAction,
 } from "./copilot-core";
+import { getCommandCenterRecommendations } from "@/lib/analytics/command-center";
 
 // ============================================
 // TOOL DEFINITIONS (AI SDK v4 format with execute functions)
@@ -483,7 +484,7 @@ async function copilotChat(
   message: string,
   conversationId?: string,
   model: string = "gpt-4o"
-): Promise<{ intent: string; reply: string; reasoning: string[]; suggestions: string[]; actions: any[]; engine: string; conversationId?: string }> {
+): Promise<{ intent: string; reply: string; reasoning: string[]; suggestions: string[]; actions: any[]; engine: string; conversationId?: string; commandCenter?: any }> {
   // Gather context
   const context = await gatherCopilotContext(workspaceId);
   if (!context) {
@@ -494,6 +495,7 @@ async function copilotChat(
       suggestions: ["Complete onboarding"],
       actions: [],
       engine: "llm-v1",
+      commandCenter: undefined,
     };
   }
 
@@ -642,14 +644,20 @@ async function copilotChat(
       .where(eq(copilotConversations.id, conversation.id));
   }
 
-  // Build suggestions based on context
-  const suggestions = [
-    "Create a campaign for this week",
-    "What should I post tomorrow?",
-    "Run product research",
-    "Check optimizer decisions",
-    "Analyze last 30 days performance",
-  ];
+  // Build suggestions from Command Center (proactive recommendations)
+  const commandCenter = await getCommandCenterRecommendations(workspaceId);
+  const suggestions = commandCenter.recommendations.slice(0, 5).map(r => r.title);
+  
+  // Fallback to static suggestions if no command center recommendations
+  if (suggestions.length === 0) {
+    suggestions.push(
+      "Create a campaign for this week",
+      "What should I post tomorrow?",
+      "Run product research",
+      "Check optimizer decisions",
+      "Analyze last 30 days performance"
+    );
+  }
 
   return {
     intent: "chat",
@@ -659,6 +667,10 @@ async function copilotChat(
     actions,
     engine: "llm-v1",
     conversationId: conversation.id,
+    commandCenter: {
+      summary: commandCenter.summary,
+      topRecommendation: commandCenter.summary.topPriority,
+    },
   };
 }
 
