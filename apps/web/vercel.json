@@ -7,6 +7,10 @@
       "schedule": "0 1 * * *"
     },
     {
+      "path": "/api/cron/video-remix",
+      "schedule": "0 2 * * *"
+    },
+    {
       "path": "/api/cron/scheduler",
       "schedule": "0 4 * * *"
     },
