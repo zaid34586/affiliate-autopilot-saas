@@ -11,7 +11,21 @@ import {
   pgEnum,
   uniqueIndex,
   index,
+  vector,
 } from "drizzle-orm/pg-core";
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolResult {
+  toolCallId: string;
+  name: string;
+  result: unknown;
+  error?: string;
+}
 
 // ───────────────────────── ENUMS ─────────────────────────
 export const roleEnum = pgEnum("role", ["owner", "admin", "editor", "analyst", "viewer"]);
@@ -19,7 +33,7 @@ export const planEnum = pgEnum("plan", ["free", "starter", "pro", "agency"]);
 export const connectionStatusEnum = pgEnum("connection_status", ["active", "expired", "revoked"]);
 export const autopilotLevelEnum = pgEnum("autopilot_level", ["manual", "semi", "full", "fire_and_forget"]);
 export const contentStatusEnum = pgEnum("content_status", ["draft", "approved", "scheduled", "published", "failed"]);
-export const postStatusEnum = pgEnum("post_status", ["scheduled", "publishing", "published", "failed"]);
+export const postStatusEnum = pgEnum("post_status", ["scheduled", "publishing", "published", "failed", "draft"]);
 export const renderStatusEnum = pgEnum("render_status", ["queued", "rendering", "done", "failed"]);
 export const productStatusEnum = pgEnum("product_status", ["active", "archived"]);
 export const dmModeEnum = pgEnum("dm_mode", ["manual", "semi", "auto"]);
@@ -863,4 +877,258 @@ export const trendRemixSuggestions = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("trs_ws_status_idx").on(t.workspaceId, t.status)],
+);
+ 
+// ───────────────────────── PHASE 6: INTELLIGENCE (Auto-Optimizer + A/B Testing) ─────────────────────────
+export const abTests = pgTable(
+  "ab_tests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("draft"), // draft|running|completed|paused
+    testType: text("test_type").notNull(), // hook|format|timing|cta
+    variants: jsonb("variants").$type<{ id: string; name: string; config: Record<string, unknown> }[]>().notNull(),
+    trafficSplit: jsonb("traffic_split").$type<Record<string, number>>().notNull(), // variant_id -> percentage
+    metric: text("metric").notNull(), // ctr|conversions|revenue|engagement
+    minSampleSize: integer("min_sample_size").default(100),
+    confidenceLevel: numeric("confidence_level", { precision: 3, scale: 2 }).default("95"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    winnerVariantId: text("winner_variant_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("abt_ws_status_idx").on(t.workspaceId, t.status)],
+);
+ 
+export const abTestResults = pgTable(
+  "ab_test_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    abTestId: uuid("ab_test_id")
+      .notNull()
+      .references(() => abTests.id, { onDelete: "cascade" }),
+    variantId: text("variant_id").notNull(),
+    impressions: integer("impressions").notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+    conversions: integer("conversions").notNull().default(0),
+    revenue: numeric("revenue", { precision: 12, scale: 2 }).default("0"),
+    engagement: numeric("engagement", { precision: 8, scale: 4 }).default("0"),
+    computedAt: timestamp("computed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("abtr_test_idx").on(t.abTestId)],
+);
+ 
+export const optimizerState = pgTable(
+  "optimizer_state",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .unique()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(true),
+    mode: text("mode").notNull().default("conservative"), // conservative|balanced|aggressive
+    minCtrThreshold: numeric("min_ctr_threshold", { precision: 5, scale: 4 }).default("0.005"), // 0.5%
+    minConversionRate: numeric("min_conversion_rate", { precision: 5, scale: 4 }).default("0.001"), // 0.1%
+    boostThreshold: numeric("boost_threshold", { precision: 5, scale: 4 }).default("0.02"), // 2% above average
+    pauseThreshold: numeric("pause_threshold", { precision: 5, scale: 4 }).default("0.001"), // 0.1% below average
+    lookbackDays: integer("lookback_days").default(7),
+    minPostsForDecision: integer("min_posts_for_decision").default(5),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastDecision: jsonb("last_decision").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("opt_ws_idx").on(t.workspaceId)],
+);
+ 
+export const postPerformance = pgTable(
+  "post_performance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    postId: uuid("post_id").references(() => posts.id, { onDelete: "set null" }),
+    videoId: uuid("video_id").references(() => videos.id, { onDelete: "set null" }),
+    platform: text("platform").notNull(),
+    format: text("format"), // reel|short|post|story
+    hook: text("hook"),
+    cta: text("cta"),
+    postingTime: timestamp("posting_time", { withTimezone: true }),
+    impressions: integer("impressions").notNull().default(0),
+    clicks: integer("clicks").notNull().default(0),
+    conversions: integer("conversions").notNull().default(0),
+    revenue: numeric("revenue", { precision: 12, scale: 2 }).default("0"),
+    engagementRate: numeric("engagement_rate", { precision: 8, scale: 4 }),
+    ctr: numeric("ctr", { precision: 8, scale: 4 }),
+    conversionRate: numeric("conversion_rate", { precision: 8, scale: 4 }),
+    roi: numeric("roi", { precision: 8, scale: 4 }),
+    abTestId: uuid("ab_test_id").references(() => abTests.id, { onDelete: "set null" }),
+    variantId: text("variant_id"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("pp_ws_platform_idx").on(t.workspaceId, t.platform),
+    index("pp_post_idx").on(t.postId),
+    index("pp_abtest_idx").on(t.abTestId),
+  ],
+);
+ 
+export const optimizerDecisions = pgTable(
+  "optimizer_decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    decisionType: text("decision_type").notNull(), // boost|pause|remix|ab_test
+    targetId: uuid("target_id").notNull(), // post_id or video_id
+    targetType: text("target_type").notNull(), // post|video
+    reason: text("reason").notNull(),
+    confidence: numeric("confidence", { precision: 5, scale: 2 }).notNull(), // 0-100
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+    executed: boolean("executed").notNull().default(false),
+    executedAt: timestamp("executed_at", { withTimezone: true }),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("od_ws_idx").on(t.workspaceId)],
+);
+ 
+export const copilotConversations = pgTable(
+  "copilot_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    title: text("title"),
+    context: jsonb("context").$type<Record<string, unknown>>().default({}), // workspace snapshot
+    status: text("status").notNull().default("active"), // active|archived
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("cc_ws_idx").on(t.workspaceId)],
+);
+ 
+export const copilotMessages = pgTable(
+  "copilot_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => copilotConversations.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // user|assistant|system|tool
+    content: text("content").notNull(),
+    toolCalls: jsonb("tool_calls").$type<ToolCall[]>(),
+    toolResults: jsonb("tool_results").$type<ToolResult[]>(),
+    actions: jsonb("actions").$type<{ type: string; payload: Record<string, unknown> }[]>(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("cm_conv_idx").on(t.conversationId)],
+);
+
+// ───────────────────────── PHASE 6 Module B: Analytics & Reports (pgvector + AI Reports) ─────────────────────────
+export const performanceEmbeddings = pgTable(
+  "performance_embeddings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    contentType: text("content_type").notNull(),
+    contentId: uuid("content_id"),
+    contentText: text("content_text").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("pe_workspace_idx").on(t.workspaceId),
+    index("pe_content_type_idx").on(t.contentType),
+    index("pe_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);
+
+export const aiReports = pgTable(
+  "ai_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    reportType: text("report_type").notNull(),
+    periodStart: date("period_start").notNull(),
+    periodEnd: date("period_end").notNull(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull(),
+    insights: text("insights").notNull(),
+    recommendations: text("recommendations").notNull(),
+    metricsSnapshot: jsonb("metrics_snapshot").$type<Record<string, unknown>>().default({}),
+    generatedBy: text("generated_by").default("llm"),
+    model: text("model"),
+    status: text("status").default("generated").notNull(),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ar_workspace_idx").on(t.workspaceId),
+    index("ar_type_period_idx").on(t.reportType, t.periodStart, t.periodEnd),
+    index("ar_created_idx").on(t.createdAt),
+  ],
+);
+
+export const abTestWinners = pgTable(
+  "ab_test_winners",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    abTestId: uuid("ab_test_id")
+      .notNull()
+      .references(() => abTests.id, { onDelete: "cascade" }),
+    winnerVariantId: text("winner_variant_id").notNull(),
+    confidence: numeric("confidence", { precision: 5, scale: 2 }).notNull(),
+    pValue: numeric("p_value", { precision: 10, scale: 8 }),
+    lift: numeric("lift", { precision: 10, scale: 4 }),
+    sampleSize: integer("sample_size").notNull(),
+    decision: text("decision").notNull(),
+    metrics: jsonb("metrics").$type<Record<string, unknown>>().default({}),
+    autoApplied: boolean("auto_applied").default(false).notNull(),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("abtw_test_idx").on(t.abTestId)],
+);
+
+export const reportSchedules = pgTable(
+  "report_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    reportType: text("report_type").notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    sendTime: text("send_time").default("09:00"),
+    timezone: text("timezone").default("UTC"),
+    recipients: jsonb("recipients").$type<string[]>().default([]),
+    format: text("format").default("html"),
+    includeAiInsights: boolean("include_ai_insights").default(true).notNull(),
+    lastGeneratedAt: timestamp("last_generated_at", { withTimezone: true }),
+    nextGenerationAt: timestamp("next_generation_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("rs_workspace_idx").on(t.workspaceId),
+    index("rs_next_gen_idx").on(t.nextGenerationAt),
+  ],
 );

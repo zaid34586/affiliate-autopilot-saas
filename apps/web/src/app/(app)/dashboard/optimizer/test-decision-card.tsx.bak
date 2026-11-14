@@ -1,0 +1,181 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { TrendingUp, Pause, Zap, FlaskConical, Play, Settings, X, AlertTriangle, RotateCw } from "lucide-react";
+
+interface OptimizerConfig {
+  enabled: boolean;
+  mode: "conservative" | "balanced" | "aggressive";
+  minCtrThreshold: number;
+  minConversionRate: number;
+  boostThreshold: number;
+  pauseThreshold: number;
+  lookbackDays: number;
+  minPostsForDecision: number;
+}
+
+interface Decision {
+  id: string;
+  decisionType: "boost" | "pause" | "remix" | "ab_test";
+  targetId: string;
+  targetType: string;
+  reason: string;
+  confidence: number;
+  metadata: Record<string, unknown>;
+  executed: boolean;
+  executedAt: string | null;
+  result: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+interface DashboardData {
+  config: OptimizerConfig;
+  recentDecisions: Decision[];
+  pendingDecisions: Decision[];
+  stats: { totalPosts: number; boosted: number; paused: number; remixed: number; abTests: number };
+}
+
+const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
+  boost: { label: "Boost", color: "bg-green-500", icon: TrendingUp },
+  pause: { label: "Pause", color: "bg-red-500", icon: Pause },
+  remix: { label: "Remix", color: "bg-purple-500", icon: RotateCw },
+  ab_test: { label: "A/B Test", color: "bg-amber-500", icon: FlaskConical },
+};
+
+function confidenceColor(c: number): string {
+  if (c >= 80) return "bg-green-500";
+  if (c >= 60) return "bg-amber-500";
+  if (c >= 40) return "bg-orange-500";
+  return "bg-red-500";
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
+function DecisionCard({
+  decision,
+  onExecute,
+  executing,
+}: {
+  decision: Decision;
+  onExecute: (id: string) => void;
+  executing: string | null;
+}) {
+  const typeCfg = TYPE_CONFIG[decision.decisionType];
+  const Icon = typeCfg.icon;
+
+  return (
+    <div className="rounded-xl border border-ink-3 bg-ink p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${typeCfg.color}/10`}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`label rounded px-2 py-0.5 ${typeCfg.color}/20 text-xs`}>
+                {typeCfg.label}
+              </span>
+              <span className={`label rounded-full ${confidenceColor(decision.confidence)}/20 px-2 py-0.5 text-xs`}>
+                {decision.confidence}%
+              </span>
+              <span className="text-xs text-bone-3">{decision.targetType}: {decision.targetId.slice(0, 8)}</span>
+              <span className={`label rounded px-2 py-0.5 ${decision.executed ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                {decision.executed ? "Executed" : "Pending"}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-bone-2">{decision.reason}</p>
+            {decision.executed && decision.result && Object.keys(decision.result).length > 0 && (
+              <p className="mt-1 text-xs text-bone-3 font-mono">Result: {JSON.stringify(decision.result)}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-bone-3">{"\u23F0 " + formatRelativeTime(decision.createdAt)}</span>
+          {!decision.executed && decision.decisionType !== "ab_test" && (
+            <button
+              onClick={() => onExecute(decision.id)}
+              disabled={executing === decision.id}
+              className="btn-signal text-xs"
+            >
+              Execute
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
+function confidenceColor(c: number): string {
+  if (c >= 80) return "bg-green-500";
+  if (c >= 60) return "bg-amber-500";
+  if (c >= 40) return "bg-orange-500";
+  return "bg-red-500";
+}
+
+const TYPE_CONFIG: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
+  boost: { label: "Boost", color: "bg-green-500", icon: TrendingUp },
+  pause: { label: "Pause", color: "bg-red-500", icon: Pause },
+  remix: { label: "Remix", color: "bg-purple-500", icon: RotateCw },
+  ab_test: { label: "A/B Test", color: "bg-amber-500", icon: FlaskConical },
+};
+
+interface OptimizerConfig {
+  enabled: boolean;
+  mode: "conservative" | "balanced" | "aggressive";
+  minCtrThreshold: number;
+  minConversionRate: number;
+  boostThreshold: number;
+  pauseThreshold: number;
+  lookbackDays: number;
+  minPostsForDecision: number;
+}
+
+interface Decision {
+  id: string;
+  decisionType: "boost" | "pause" | "remix" | "ab_test";
+  targetId: string;
+  targetType: string;
+  reason: string;
+  confidence: number;
+  metadata: Record<string, unknown>;
+  executed: boolean;
+  executedAt: string | null;
+  result: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+interface DashboardData {
+  config: OptimizerConfig;
+  recentDecisions: Decision[];
+  pendingDecisions: Decision[];
+  stats: { totalPosts: number; boosted: number; paused: number; remixed: number; abTests: number };
+}
+
+export default function TestComponent() {
+  return <DecisionCard decision={{ id: "1", decisionType: "boost", targetId: "test", targetType: "post", reason: "test", confidence: 80, metadata: {}, executed: false, executedAt: null, result: null, createdAt: new Date().toISOString() }} onExecute={() => {}} executing={null} />;
+}

@@ -132,6 +132,51 @@ export const MAIN_NAV: NavItem[] = [
     phase: "Phase 5",
   },
   {
+    index: "11",
+    label: "Optimizer",
+    href: "/dashboard/optimizer",
+    module: "Auto-Optimizer",
+    summary:
+      "24/7 post analysis → auto boost/pause/remix/A/B test with confidence scoring.",
+    bullets: [
+      "Auto boost high-performing posts",
+      "Auto pause underperforming content",
+      "Remix winners for new products",
+      "Auto A/B test CTA/hook/format",
+    ],
+    phase: "Phase 6",
+  },
+  {
+    index: "12",
+    label: "Reports",
+    href: "/dashboard/reports",
+    module: "AI Reports",
+    summary:
+      "Daily/Weekly/Monthly AI reports — What happened, Why, What next. Performance memory + A/B winner selection.",
+    bullets: [
+      "AI daily/weekly/monthly reports (What/Why/What next)",
+      "Performance memory (pgvector): niche insights",
+      "A/B test auto-winner selection",
+      "Scheduled report delivery",
+    ],
+    phase: "Phase 6",
+  },
+  {
+    index: "13",
+    label: "Copilot",
+    href: "/dashboard/copilot",
+    module: "AI Copilot",
+    summary:
+      "LLM-powered chat with real actions — create posts, build campaigns, run research, control autopilot.",
+    bullets: [
+      "Context-aware chat with full workspace data",
+      "Create posts, campaigns, run research from chat",
+      "Control optimizer, autopilot, character from chat",
+      "Proactive recommendations: 'What should I do next?'",
+    ],
+    phase: "Phase 6",
+  },
+  {
     index: "10",
     label: "Trend Miner",
     href: "/dashboard/trend-miner",
@@ -150,7 +195,7 @@ export const MAIN_NAV: NavItem[] = [
 /** Bottom nav — connections, autopilot, settings. */
 export const BOTTOM_NAV: NavItem[] = [
   {
-    index: "11",
+    index: "14",
     label: "Connections",
     href: "/dashboard/connections",
     module: "Connections",
@@ -164,7 +209,7 @@ export const BOTTOM_NAV: NavItem[] = [
     phase: "Phase 2–3",
   },
   {
-    index: "12",
+    index: "15",
     label: "Autopilot",
     href: "/dashboard/autopilot",
     module: "Autopilot",
@@ -178,7 +223,7 @@ export const BOTTOM_NAV: NavItem[] = [
     phase: "Phase 5",
   },
   {
-    index: "13",
+    index: "16",
     label: "Settings",
     href: "/dashboard/settings",
     module: "Settings",

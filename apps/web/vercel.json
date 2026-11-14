@@ -29,6 +29,14 @@
     {
       "path": "/api/cron/dm-funnel",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/optimizer",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/reports",
+      "schedule": "0 6 * * *"
     }
   ]
 }
