@@ -764,3 +764,103 @@ export const notificationPreferences = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
 );
+ 
+// ───────────────────────── TREND MINER (Module E) ─────────────────────────
+export const trendingHashtags = pgTable(
+  "trending_hashtags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(), // instagram|youtube|tiktok|facebook|x
+    hashtag: text("hashtag").notNull(),
+    volume: integer("volume").notNull(), // posts using this hashtag
+    velocity: numeric("velocity", { precision: 10, scale: 2 }), // growth rate %
+    niche: text("niche"), // fitness|beauty|tech|etc.
+    source: text("source").notNull(), // api|scrape|manual
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("th_ws_platform_idx").on(t.workspaceId, t.platform),
+    uniqueIndex("th_ws_platform_hashtag_idx").on(t.workspaceId, t.platform, t.hashtag),
+  ],
+);
+ 
+export const trendingAudio = pgTable(
+  "trending_audio",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(), // instagram|tiktok|youtube
+    audioId: text("audio_id").notNull(), // platform's audio ID
+    title: text("title"),
+    artist: text("artist"),
+    usageCount: integer("usage_count").notNull(),
+    velocity: numeric("velocity", { precision: 10, scale: 2 }),
+    durationSec: integer("duration_sec"),
+    source: text("source").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ta_ws_platform_idx").on(t.workspaceId, t.platform),
+    uniqueIndex("ta_ws_platform_audio_idx").on(t.workspaceId, t.platform, t.audioId),
+  ],
+);
+ 
+export const viralPosts = pgTable(
+  "viral_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    platformPostId: text("platform_post_id").notNull(),
+    authorHandle: text("author_handle").notNull(),
+    caption: text("caption"),
+    hashtags: jsonb("hashtags").$type<string[]>().default([]),
+    audioId: text("audio_id"),
+    views: integer("views").notNull().default(0),
+    likes: integer("likes").notNull().default(0),
+    comments: integer("comments").notNull().default(0),
+    shares: integer("shares").notNull().default(0),
+    engagementRate: numeric("engagement_rate", { precision: 8, scale: 4 }),
+    affiliateLinks: jsonb("affiliate_links").$type<string[]>().default([]),
+    niche: text("niche"),
+    postedAt: timestamp("posted_at", { withTimezone: true }),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("vp_ws_platform_idx").on(t.workspaceId, t.platform),
+    uniqueIndex("vp_ws_platform_post_idx").on(t.workspaceId, t.platform, t.platformPostId),
+  ],
+);
+ 
+export const trendRemixSuggestions = pgTable(
+  "trend_remix_suggestions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    viralPostId: uuid("viral_post_id").references(() => viralPosts.id, { onDelete: "set null" }),
+    trendingHashtagId: uuid("trending_hashtag_id").references(() => trendingHashtags.id, { onDelete: "set null" }),
+    trendingAudioId: uuid("trending_audio_id").references(() => trendingAudio.id, { onDelete: "set null" }),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    suggestedFormat: text("suggested_format").notNull(), // remix|reaction|tutorial|showcase
+    hookIdea: text("hook_idea").notNull(),
+    scriptOutline: text("script_outline"),
+    confidence: integer("confidence").notNull().default(50), // 0-100
+    status: text("status").notNull().default("pending"), // pending|approved|rejected|created
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("trs_ws_status_idx").on(t.workspaceId, t.status)],
+);

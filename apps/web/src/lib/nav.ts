@@ -131,12 +131,26 @@ export const MAIN_NAV: NavItem[] = [
     ],
     phase: "Phase 5",
   },
+  {
+    index: "10",
+    label: "Trend Miner",
+    href: "/dashboard/trend-miner",
+    module: "Trend Miner",
+    summary:
+      "Scans trending hashtags/audio → finds viral posts → suggests remixes for your products.",
+    bullets: [
+      "Trending hashtags + audio (IG/TikTok/YT)",
+      "Viral post detection + affiliate link extraction",
+      "AI remix suggestions (hook + script + confidence)",
+    ],
+    phase: "Phase 5",
+  },
 ];
 
 /** Bottom nav — connections, autopilot, settings. */
 export const BOTTOM_NAV: NavItem[] = [
   {
-    index: "10",
+    index: "11",
     label: "Connections",
     href: "/dashboard/connections",
     module: "Connections",
@@ -150,7 +164,7 @@ export const BOTTOM_NAV: NavItem[] = [
     phase: "Phase 2–3",
   },
   {
-    index: "11",
+    index: "12",
     label: "Autopilot",
     href: "/dashboard/autopilot",
     module: "Autopilot",
@@ -164,7 +178,7 @@ export const BOTTOM_NAV: NavItem[] = [
     phase: "Phase 5",
   },
   {
-    index: "12",
+    index: "13",
     label: "Settings",
     href: "/dashboard/settings",
     module: "Settings",
