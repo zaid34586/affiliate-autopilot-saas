@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/thinking",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/dm-funnel",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

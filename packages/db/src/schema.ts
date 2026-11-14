@@ -433,6 +433,133 @@ export const dmMessages = pgTable(
   (t) => [index("dm_ws_status_idx").on(t.workspaceId, t.status)],
 );
 
+// ───────────────────────── DM FUNNELS (auto-funnel sequences) ─────────────────────────
+export const funnelStepTypeEnum = pgEnum("funnel_step_type", [
+  "greet",
+  "pitch",
+  "link",
+  "followup",
+]);
+
+export const dmFunnels = pgTable(
+  "dm_funnels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("df_ws_idx").on(t.workspaceId)],
+);
+
+export const dmFunnelSteps = pgTable(
+  "dm_funnel_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    funnelId: uuid("funnel_id")
+      .notNull()
+      .references(() => dmFunnels.id, { onDelete: "cascade" }),
+    stepType: funnelStepTypeEnum("step_type").notNull(),
+    order: integer("order").notNull(),
+    template: text("template").notNull(), // can use {{product}}, {{link}}, {{name}}
+    delayHours: integer("delay_hours").notNull().default(0), // wait before this step
+    conditions: jsonb("conditions").$type<Record<string, unknown>>().default({}), // e.g., { sentiment: "positive" }
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("dfs_funnel_idx").on(t.funnelId),
+    uniqueIndex("dfs_funnel_order_uq").on(t.funnelId, t.order),
+  ],
+);
+
+// Link triggers to funnels (a trigger can start a funnel instead of single reply)
+export const dmTriggerFunnels = pgTable(
+  "dm_trigger_funnels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    triggerId: uuid("trigger_id")
+      .notNull()
+      .references(() => dmTriggers.id, { onDelete: "cascade" }),
+    funnelId: uuid("funnel_id")
+      .notNull()
+      .references(() => dmFunnels.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("dtf_trigger_funnel_uq").on(t.triggerId, t.funnelId)],
+);
+
+// Conversation state per recipient in a funnel
+export const dmConversations = pgTable(
+  "dm_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    funnelId: uuid("funnel_id")
+      .notNull()
+      .references(() => dmFunnels.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    recipientHandle: text("recipient_handle").notNull(),
+    currentStepIndex: integer("current_step_index").notNull().default(0),
+    status: text("status").notNull().default("active"), // active | completed | paused | blocked
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    nextStepAt: timestamp("next_step_at", { withTimezone: true }),
+    context: jsonb("context").$type<Record<string, unknown>>().default({}), // productId, postId, etc.
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("dc_ws_status_idx").on(t.workspaceId, t.status),
+    index("dc_funnel_recipient_idx").on(t.funnelId, t.recipientHandle),
+    uniqueIndex("dc_funnel_recipient_uq").on(t.funnelId, t.recipientHandle),
+  ],
+);
+
+// Anti-spam: blocklist per workspace
+export const dmBlocklist = pgTable(
+  "dm_blocklist",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    handle: text("handle").notNull(), // @handle or handle
+    platform: text("platform"), // null = all platforms
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("dbl_ws_idx").on(t.workspaceId),
+    uniqueIndex("dbl_ws_handle_platform_uq").on(t.workspaceId, t.handle, t.platform),
+  ],
+);
+
+// Anti-spam: daily caps per platform per workspace (in addition to trigger dailyCap)
+export const dmDailyCaps = pgTable(
+  "dm_daily_caps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    day: date("day").notNull(),
+    sentCount: integer("sent_count").notNull().default(0),
+    limit: integer("limit").notNull().default(50),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("ddc_ws_platform_day_uq").on(t.workspaceId, t.platform, t.day),
+  ],
+);
+
 // ───────────────────────── COMMENTS (audience se discuss) ─────────────────────────
 export const postComments = pgTable(
   "post_comments",
