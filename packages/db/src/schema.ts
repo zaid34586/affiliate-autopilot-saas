@@ -151,6 +151,12 @@ export const characters = pgTable("characters", {
     dm: "off",
   }),
   guardrails: jsonb("guardrails").$type<Record<string, unknown>>().default({}),
+  // Phase 6 Module C — Character v3
+  voiceId: text("voice_id"), // ElevenLabs voice ID (preset or cloned)
+  voiceSettings: jsonb("voice_settings").$type<{ stability: number; similarity_boost: number; style?: number; use_speaker_boost: boolean }>().default({ stability: 0.5, similarity_boost: 0.75, style: 0, use_speaker_boost: true }),
+  dmReplyMode: text("dm_reply_mode").default("suggested"), // off|suggested|auto
+  dmReplySettings: jsonb("dm_reply_settings").$type<{ maxLength: number; includeLink: boolean; tone: string; language: string }>().default({ maxLength: 500, includeLink: true, tone: "friendly", language: "en" }),
+  voiceNotesEnabled: boolean("voice_notes_enabled").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
