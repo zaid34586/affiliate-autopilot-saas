@@ -5,6 +5,7 @@ import { brandProfiles, characters } from "@aa/db";
 import { db } from "@/lib/db";
 import { requireWorkspace } from "@/lib/session";
 import { ModulePage } from "@/components/module-page";
+import { CharacterChat } from "./character-chat";
 
 export const metadata: Metadata = { title: "Character" };
 
@@ -24,6 +25,7 @@ export default async function CharacterPage() {
     .limit(1);
 
   const extra = character ? (
+    <>
     <div className="mb-7 grid gap-5 md:grid-cols-3">
       {/* identity */}
       <div className="panel grid-dots p-5 text-center md:col-span-1">
@@ -65,15 +67,18 @@ export default async function CharacterPage() {
         </ul>
 
         <div className="mt-5 rounded-lg border border-ink-3 bg-ink px-4 py-3">
-          <p className="label text-amber">💭 thought journal · phase 5</p>
+          <p className="label text-amber">💭 thought journal</p>
           <p className="mt-1.5 text-xs text-bone-3">
-            It writes daily strategy thoughts — &ldquo;what should work in the
-            fitness niche tomorrow?&rdquo; The journal table is live now; the
-            writing engine arrives in Phase 5.
+            It writes daily strategy thoughts — the journal table is live and
+            the self-reflection writing engine ships with Phase 5 Module C.
           </p>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* Phase 5 Module C — discussion chat */}
+      <CharacterChat />
+    </>
   ) : (
     <div className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-dashed border-ink-4 px-5 py-4">
       <p className="text-sm text-bone-2">
