@@ -11,6 +11,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/whatsapp-bot",
+      "schedule": "0 3 * * *"
+    },
+    {
       "path": "/api/cron/scheduler",
       "schedule": "0 4 * * *"
     },
