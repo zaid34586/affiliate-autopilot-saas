@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { ALL_NAV, MAIN_NAV, BOTTOM_NAV, findNavItem } from "@/lib/nav";
 
 describe("nav config", () => {
-  it("sidebar has 10 main modules + 3 bottom items", () => {
-    expect(MAIN_NAV).toHaveLength(10);
+  it("sidebar has 13 main modules + 3 bottom items", () => {
+    expect(MAIN_NAV).toHaveLength(13);
     expect(BOTTOM_NAV).toHaveLength(3);
-    expect(ALL_NAV).toHaveLength(13);
+    expect(ALL_NAV).toHaveLength(16);
   });
 
   it("har item ka unique href + index hai", () => {
