@@ -7,6 +7,7 @@ import { requireWorkspace } from "@/lib/session";
 import { ModulePage } from "@/components/module-page";
 import { CharacterChat } from "./character-chat";
 import { CommentsInbox } from "./comments-inbox";
+import { ThoughtJournal } from "./thought-journal";
 
 export const metadata: Metadata = { title: "Character" };
 
@@ -76,6 +77,9 @@ export default async function CharacterPage() {
         </div>
       </div>
       </div>
+
+      {/* Phase 5 Module C — self-reflection journal */}
+      <ThoughtJournal />
 
       {/* Phase 5 Module C — discussion chat */}
       <CharacterChat />
