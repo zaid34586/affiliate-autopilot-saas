@@ -8,6 +8,10 @@ import { signIn as nextAuthSignIn, signOut as nextAuthSignOut } from "@/auth";
 import { users } from "@aa/db";
 import { db } from "@/lib/db";
 import { normalizeEmail, validateSignup } from "@/lib/validators";
+import { getOrCreateWorkspace } from "@/lib/workspace";
+import { attributeSignup } from "@/lib/referrals/referrals";
+import { isValidReferralCode } from "@/lib/referrals/referrals-core";
+import { trackProductEvent } from "@/lib/analytics/product-analytics";
 
 export type AuthFormState =
   | { errors?: { email?: string[]; password?: string[]; name?: string[] }; message?: string }
@@ -21,6 +25,7 @@ export async function signup(
   const name = String(formData.get("name") ?? "").trim();
   const email = normalizeEmail(formData.get("email"));
   const password = String(formData.get("password") ?? "");
+  const referralCode = String(formData.get("ref") ?? "").trim().toUpperCase();
 
   const errors = validateSignup({ name, email, password });
   if (Object.keys(errors).length > 0) return { errors };
@@ -36,12 +41,35 @@ export async function signup(
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await db.insert(users).values({
-    email,
-    name,
-    passwordHash,
-    authProvider: "credentials",
-  });
+  const [newUser] = await db
+    .insert(users)
+    .values({
+      email,
+      name,
+      passwordHash,
+      authProvider: "credentials",
+    })
+    .returning({ id: users.id });
+
+  // Phase 7: referral attribution + signup funnel event (best-effort, non-blocking failure)
+  if (newUser) {
+    try {
+      const workspace = await getOrCreateWorkspace(newUser.id);
+
+      await trackProductEvent({
+        workspaceId: workspace.id,
+        userId: newUser.id,
+        event: "signup",
+        properties: { referral: Boolean(referralCode) },
+      });
+
+      if (referralCode && isValidReferralCode(referralCode)) {
+        await attributeSignup(referralCode, newUser.id, workspace.id);
+      }
+    } catch (err) {
+      console.error("Post-signup tracking error:", err);
+    }
+  }
 
   // session set (the JWT callback upserts the user + workspace into the DB)
   try {

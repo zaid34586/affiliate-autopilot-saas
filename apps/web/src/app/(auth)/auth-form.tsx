@@ -7,9 +7,11 @@ import { login, signup, type AuthFormState } from "./actions";
 type Props = {
   mode: "login" | "signup";
   googleEnabled: boolean;
+  /** Referral code from ?ref= query param (signup only). */
+  referralCode?: string;
 };
 
-export function AuthForm({ mode, googleEnabled }: Props) {
+export function AuthForm({ mode, googleEnabled, referralCode }: Props) {
   const action = mode === "login" ? login : signup;
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(
     action,
@@ -33,6 +35,9 @@ export function AuthForm({ mode, googleEnabled }: Props) {
       </p>
 
       <form action={formAction} className="mt-7 space-y-4">
+        {mode === "signup" && referralCode && (
+          <input type="hidden" name="ref" value={referralCode} />
+        )}
         {mode === "signup" && (
           <div>
             <label htmlFor="name" className="label mb-2 block text-bone-3">

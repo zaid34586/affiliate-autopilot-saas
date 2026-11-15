@@ -1521,3 +1521,87 @@ export const statusIncidents = pgTable(
     index("si_started_idx").on(t.startedAt),
   ],
 );
+
+// ───────────────────────── PHASE 7: Referral Program ─────────────────────────
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull().unique(),
+    referrerUserId: uuid("referrer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    referrerWorkspaceId: uuid("referrer_workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    clicks: integer("clicks").notNull().default(0),
+    signups: integer("signups").notNull().default(0),
+    conversions: integer("conversions").notNull().default(0),
+    totalEarnedCents: integer("total_earned_cents").notNull().default(0),
+  },
+  (t) => [uniqueIndex("ref_user_uq").on(t.referrerUserId), index("ref_code_idx").on(t.code)],
+);
+
+export const referralAttributions = pgTable(
+  "referral_attributions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    referralId: uuid("referral_id")
+      .notNull()
+      .references(() => referrals.id, { onDelete: "cascade" }),
+    referredUserId: uuid("referred_user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    referredWorkspaceId: uuid("referred_workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }).notNull().defaultNow(),
+    signedUpAt: timestamp("signed_up_at", { withTimezone: true }),
+    firstPaidAt: timestamp("first_paid_at", { withTimezone: true }),
+    status: text("status").notNull().default("clicked"), // clicked|signed_up|paid
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ra_referral_idx").on(t.referralId),
+    index("ra_referred_idx").on(t.referredUserId),
+  ],
+);
+
+export const referralCommissions = pgTable(
+  "referral_commissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    referralId: uuid("referral_id")
+      .notNull()
+      .references(() => referrals.id, { onDelete: "cascade" }),
+    referredWorkspaceId: uuid("referred_workspace_id").references(() => workspaces.id, {
+      onDelete: "set null",
+    }),
+    amountCents: integer("amount_cents").notNull(),
+    sourcePaymentCents: integer("source_payment_cents").notNull(),
+    kind: text("kind").notNull().default("recurring"), // recurring|credit_bonus|first_payment
+    status: text("status").notNull().default("pending"), // pending|credited|paid_out
+    periodStart: date("period_start"),
+    periodEnd: date("period_end"),
+    creditedAt: timestamp("credited_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("rc_referral_idx").on(t.referralId),
+    index("rc_status_idx").on(t.status),
+    uniqueIndex("rc_idempotency_uq").on(t.referralId, t.sourcePaymentCents, t.periodEnd),
+  ],
+);
+
+export const referralSettings = pgTable("referral_settings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  enabled: boolean("enabled").notNull().default(true),
+  commissionPct: integer("commission_pct").notNull().default(20),
+  creditBonusCents: integer("credit_bonus_cents").notNull().default(1000),
+  referredCreditCents: integer("referred_credit_cents").notNull().default(500),
+  minPayoutCents: integer("min_payout_cents").notNull().default(5000),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
