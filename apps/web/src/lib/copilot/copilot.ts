@@ -23,6 +23,7 @@ import {
 } from "@aa/db";
 import { eq, desc, gte, sql, sum, and, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { buildKbContextForMessage } from "@/lib/knowledge/knowledge";
 import {
   CopilotIntent,
   CopilotContext,
@@ -547,6 +548,9 @@ async function copilotChat(
   ];
   const contextString = contextParts.join("\n");
 
+  // Phase 7: pull relevant Knowledge Base chunks for this message (AI uses uploaded docs)
+  const kbContext = await buildKbContextForMessage(workspaceId, message);
+
   const historyMessages = history.reverse().map(m => ({
     role: m.role as "user" | "assistant",
     content: m.content,
@@ -555,6 +559,9 @@ async function copilotChat(
     { role: "system", content: SYSTEM_PROMPT },
     { role: "system", content: contextString },
   ];
+  if (kbContext) {
+    messages.push({ role: "system", content: kbContext });
+  }
   historyMessages.forEach(m => messages.push(m));
   messages.push({ role: "user", content: message });
 

@@ -1673,3 +1673,49 @@ export const contentTemplates = pgTable(
     index("ct_builtin_idx").on(t.builtin, t.usageCount),
   ],
 );
+
+// ───────────────────────── PHASE 7: Knowledge Base ─────────────────────────
+export const knowledgeDocuments = pgTable(
+  "knowledge_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    sourceType: text("source_type").notNull(), // pdf|docx|text|markdown|url
+    sourceUrl: text("source_url"),
+    content: text("content").notNull().default(""),
+    status: text("status").notNull().default("ready"), // processing|ready|failed
+    error: text("error"),
+    chunkCount: integer("chunk_count").notNull().default(0),
+    charCount: integer("char_count").notNull().default(0),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("kb_docs_ws_idx").on(t.workspaceId, t.createdAt),
+    index("kb_docs_status_idx").on(t.status),
+  ],
+);
+
+export const knowledgeChunks = pgTable(
+  "knowledge_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => knowledgeDocuments.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    chunkIndex: integer("chunk_index").notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("kb_chunks_doc_idx").on(t.documentId, t.chunkIndex),
+    index("kb_chunks_ws_idx").on(t.workspaceId),
+  ],
+);
