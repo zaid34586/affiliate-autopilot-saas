@@ -11,6 +11,7 @@ import {
   validateTicket,
   getTicketSLA,
 } from "./help-center-core";
+import { autoReplyOnNewTicket } from "@/lib/support/support-bot";
 
 export interface CreateTicketInput {
   workspaceId: string;
@@ -69,6 +70,15 @@ export async function createSupportTicket(input: CreateTicketInput) {
 
   // Log the creation
   console.log(`[Support] Ticket created: ${ticket.id} for workspace ${input.workspaceId}`);
+
+  // Phase 7: Trigger AI Support Bot auto-reply (fire-and-forget, non-blocking)
+  autoReplyOnNewTicket(ticket.id, input.workspaceId, input.userId)
+    .then((result) => {
+      if (result.replied) {
+        console.log(`[SupportBot] Auto-replied to ticket ${ticket.id} (confidence: ${result.confidence}%)`);
+      }
+    })
+    .catch((err) => console.error("[SupportBot] Auto-reply failed:", err));
 
   return mapTicket(ticket);
 }
