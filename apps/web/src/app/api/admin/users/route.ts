@@ -1,0 +1,85 @@
+/**
+ * Phase 8 — Admin API: Users
+ * GET /api/admin/users - List users with filters, pagination
+ * GET /api/admin/users/[id] - User detail
+ * PATCH /api/admin/users/[id] - Update user (suspend, role, etc.)
+ */
+
+import { NextResponse } from "next/server";
+import { requirePlatformAdmin } from "@/lib/admin/admin-auth";
+import { db } from "@/lib/db";
+import { users, workspaces, workspaceMembers, subscriptions } from "@aa/db";
+import { eq, and, desc, asc, ilike, or, sql, count, gte, lte } from "drizzle-orm";
+
+export async function GET(req: Request) {
+  try {
+    await requirePlatformAdmin();
+  } catch {
+    return NextResponse.json({ error: "Platform admin required" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50")));
+  const search = searchParams.get("search")?.trim();
+  const status = searchParams.get("status"); // active|suspended|all
+  const sort = searchParams.get("sort") || "createdAt";
+  const order = searchParams.get("order") || "desc";
+
+  const offset = (page - 1) * limit;
+
+  const whereConditions = [];
+  if (search) {
+    whereConditions.push(
+      or(
+        ilike(users.email, `%${search}%`),
+        ilike(users.name, `%${search}%`),
+        eq(users.id, search),
+      ),
+    );
+  }
+  if (status === "active") whereConditions.push(eq(users.email, sql`users.email`)); // all verified emails are active
+  if (status === "suspended") whereConditions.push(sql`false`); // no suspend field yet
+
+  const orderColumn = users[sort as keyof typeof users] || users.createdAt;
+  const orderFn = order === "asc" ? asc : desc;
+
+  const [userRows, totalResult] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        authProvider: users.authProvider,
+        onboardingDone: users.onboardingDone,
+        twoFactorEnabled: users.twoFactorEnabled,
+        createdAt: users.createdAt,
+        workspaceCount: sql<number>`(
+          select count(*) from ${workspaceMembers} where ${workspaceMembers.userId} = ${users.id}
+        )::int`,
+        subscriptionStatus: sql<string>`(
+          select status from ${subscriptions} where ${subscriptions.userId} = ${users.id} order by created_at desc limit 1
+        )`,
+      })
+      .from(users)
+      .where(whereConditions.length ? and(...whereConditions) : undefined)
+      .orderBy(orderFn(orderColumn))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from(users)
+      .where(whereConditions.length ? and(...whereConditions) : undefined),
+  ]);
+
+  return NextResponse.json({
+    users: userRows,
+    pagination: {
+      page,
+      limit,
+      total: totalResult[0]?.count || 0,
+      totalPages: Math.ceil((totalResult[0]?.count || 0) / limit),
+    },
+  });
+}

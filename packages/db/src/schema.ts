@@ -110,6 +110,8 @@ export const connections = pgTable(
     apiKeyEnc: text("api_key_enc"), // BYOK: user ki apni Gemini/GCP key (optional)
     scopes: jsonb("scopes").$type<string[]>(),
     status: connectionStatusEnum("status").notNull().default("active"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("conn_ws_provider_idx").on(t.workspaceId, t.provider)],
@@ -736,8 +738,16 @@ export const subscriptions = pgTable("subscriptions", {
   providerSubId: text("provider_sub_id"),
   plan: planEnum("plan").notNull().default("free"),
   status: text("status").default("active"), // active|past_due|canceled
+  amountCents: integer("amount_cents"),
+  interval: text("interval").default("month"),
+  currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  canceledAt: timestamp("canceled_at", { withTimezone: true }),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   meteredUsage: jsonb("metered_usage").$type<Record<string, number>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const notifications = pgTable(
@@ -1186,6 +1196,7 @@ export const featureFlags = pgTable(
       workspaceIds?: string[];
       roles?: string[];
     }>().default({ userIds: [], workspaceIds: [], roles: [] }),
+    workspaceOverrides: jsonb("workspace_overrides").$type<Record<string, boolean>>().default({}),
     variants: jsonb("variants").$type<Array<{
       key: string;
       weight: number;
