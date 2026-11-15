@@ -148,7 +148,7 @@ describe("checkAntiSpam", () => {
     platform: "instagram",
     recipientHandle: "fan_rohan",
     funnelId: "f1",
-    dailyCaps: [{ platform: "instagram", day: "2026-11-14", sentCount: 5, limit: 50 }],
+    dailyCaps: [{ platform: "instagram", day: new Date().toISOString().split("T")[0], sentCount: 5, limit: 50 }],
     blocklist: [],
     existingConversation: null,
     funnelDailyCap: 100,
@@ -226,9 +226,10 @@ describe("checkAntiSpam", () => {
   });
 
   it("blocks when platform daily cap reached", () => {
+    const today = new Date().toISOString().split("T")[0];
     const r = checkAntiSpam({
       ...baseParams,
-      dailyCaps: [{ platform: "instagram", day: "2026-11-14", sentCount: 50, limit: 50 }],
+      dailyCaps: [{ platform: "instagram", day: today, sentCount: 50, limit: 50 }],
     });
     expect(r.allowed).toBe(false);
     expect(r.reason).toContain("Platform daily cap");

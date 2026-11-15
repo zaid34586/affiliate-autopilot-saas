@@ -12,6 +12,7 @@ import {
   uniqueIndex,
   index,
   vector,
+  bigint,
 } from "drizzle-orm/pg-core";
 
 export interface ToolCall {
@@ -1386,4 +1387,80 @@ export const ticketMessages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("tm_ticket_idx").on(t.ticketId)],
+);
+
+// ───────────────────────── PHASE 7: Product Analytics ─────────────────────────
+export const productEvents = pgTable(
+  "product_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    event: text("event").notNull(),
+    properties: jsonb("properties").$type<Record<string, unknown>>().default({}),
+    ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("pe_ws_event_idx").on(t.workspaceId, t.event),
+    index("pe_ts_idx").on(t.ts),
+    index("pe_user_idx").on(t.userId),
+  ],
+);
+
+export const mrrSnapshots = pgTable(
+  "mrr_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull().unique(),
+    mrrCents: integer("mrr_cents").notNull().default(0),
+    arrCents: bigint("arr_cents", { mode: "number" }).notNull().default(0),
+    paidWorkspaces: integer("paid_workspaces").notNull().default(0),
+    trialWorkspaces: integer("trial_workspaces").notNull().default(0),
+    newPaid: integer("new_paid").notNull().default(0),
+    churnedPaid: integer("churned_paid").notNull().default(0),
+    freeWorkspaces: integer("free_workspaces").notNull().default(0),
+    aiCostUsd: numeric("ai_cost_usd", { precision: 12, scale: 4 }).notNull().default("0"),
+    arpuCents: integer("arpu_cents").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("mrr_day_idx").on(t.day)],
+);
+
+export const featureUsageDaily = pgTable(
+  "feature_usage_daily",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    day: date("day").notNull(),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }),
+    feature: text("feature").notNull(),
+    usageCount: integer("usage_count").notNull().default(0),
+    uniqueUsers: integer("unique_users").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("fud_day_ws_feature_uq").on(t.day, t.workspaceId, t.feature),
+    index("fud_day_idx").on(t.day),
+    index("fud_feature_day_idx").on(t.feature, t.day),
+  ],
+);
+
+export const churnSignals = pgTable(
+  "churn_signals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    signal: text("signal").notNull(),
+    severity: text("severity").notNull().default("low"), // low|medium|high
+    score: integer("score").notNull().default(0),
+    details: jsonb("details").$type<Record<string, unknown>>().default({}),
+    detectedAt: timestamp("detected_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("cs_ws_signal_uq").on(t.workspaceId, t.signal),
+    index("cs_ws_idx").on(t.workspaceId),
+    index("cs_sev_idx").on(t.severity),
+  ],
 );
