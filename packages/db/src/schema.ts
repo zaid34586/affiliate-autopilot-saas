@@ -1464,3 +1464,60 @@ export const churnSignals = pgTable(
     index("cs_sev_idx").on(t.severity),
   ],
 );
+
+// ───────────────────────── PHASE 7: Status Page ─────────────────────────
+export const integrationHealth = pgTable(
+  "integration_health",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    category: text("category").notNull().default("integration"), // integration|ai|payment|platform
+    status: text("status").notNull().default("operational"), // operational|degraded|down|maintenance|unknown
+    uptime30d: numeric("uptime_30d", { precision: 5, scale: 2 }).notNull().default("100.00"),
+    avgLatencyMs: integer("avg_latency_ms"),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    lastIncidentAt: timestamp("last_incident_at", { withTimezone: true }),
+    incidentMessage: text("incident_message"),
+    checks30d: integer("checks_30d").notNull().default(0),
+    ok30d: integer("ok_30d").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ih_status_idx").on(t.status)],
+);
+
+export const statusChecks = pgTable(
+  "status_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    ok: boolean("ok").notNull(),
+    latencyMs: integer("latency_ms"),
+    statusCode: integer("status_code"),
+    message: text("message"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sc_provider_time_idx").on(t.provider, t.checkedAt)],
+);
+
+export const statusIncidents = pgTable(
+  "status_incidents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    severity: text("severity").notNull().default("minor"), // minor|major|critical
+    status: text("status").notNull().default("investigating"), // investigating|identified|monitoring|resolved
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    updates: jsonb("updates").$type<Array<{ at: string; status: string; message: string }>>().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("si_status_idx").on(t.status),
+    index("si_started_idx").on(t.startedAt),
+  ],
+);

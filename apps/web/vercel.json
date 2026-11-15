@@ -65,6 +65,10 @@
     {
       "path": "/api/cron/product-analytics",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/status-check",
+      "schedule": "0 15 * * *"
     }
   ]
 }
