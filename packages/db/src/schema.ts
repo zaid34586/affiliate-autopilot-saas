@@ -1646,3 +1646,30 @@ export const emailUnsubscribes = pgTable(
     index("eu_user_idx").on(t.userId),
   ],
 );
+
+// ───────────────────────── PHASE 7: Templates Library ─────────────────────────
+export const contentTemplates = pgTable(
+  "content_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull().unique(), // stable key (builtin: slug, custom: ws:<uuid>:<n>)
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "cascade" }), // NULL = builtin
+    niche: text("niche").notNull(), // fitness|beauty|tech|finance|home|food|fashion|travel|saas|generic
+    format: text("format").notNull(), // reel_script|hook|caption|dm_sequence|carousel|email
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    body: text("body").notNull(), // may contain {{variables}}
+    variables: jsonb("variables").$type<string[]>().notNull().default([]),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    builtin: boolean("builtin").notNull().default(false),
+    usageCount: integer("usage_count").notNull().default(0),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("ct_niche_format_idx").on(t.niche, t.format),
+    index("ct_ws_idx").on(t.workspaceId),
+    index("ct_builtin_idx").on(t.builtin, t.usageCount),
+  ],
+);
