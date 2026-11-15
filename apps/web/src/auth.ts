@@ -95,6 +95,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // workspace guaranteed ho (naye + purane dono)
           const workspace = await getOrCreateWorkspace(dbUser.id);
           token.workspaceId = workspace.id;
+
+          // Phase 7: accept pending team invites on sign-in (initial session only)
+          if (user) {
+            try {
+              const { activatePendingMemberships } = await import("@/lib/teams/invites");
+              await activatePendingMemberships(dbUser.id);
+            } catch (err) {
+              console.error("Invite activation error:", err);
+            }
+          }
         }
       }
       return token;

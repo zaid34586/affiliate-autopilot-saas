@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { workspaceMembers, users } from "@aa/db";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { getUserRoleInWorkspace } from "@/lib/auth-utils";
+import { inviteMember, getTeamStats } from "@/lib/teams/invites";
 
 export async function GET() {
   const session = await auth();
@@ -35,6 +37,7 @@ export async function GET() {
         invitedAt: m.invitedAt?.toISOString(),
         status: m.status,
       })),
+      stats: await getTeamStats(workspaceId),
     });
   } catch (e) {
     console.error("Fetch team members error:", e);
@@ -58,56 +61,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email and role required" }, { status: 400 });
     }
 
-    // Check if user is owner/admin
-    const requester = await db
-      .select()
-      .from(workspaceMembers)
-      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id)))
-      .limit(1);
-
-    if (!requester.length || !["owner", "admin"].includes(requester[0].role)) {
+    const actorRole = await getUserRoleInWorkspace(workspaceId, session.user.id);
+    if (!actorRole || !["owner", "admin"].includes(actorRole)) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    // Find or create user
-    const targetUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email.toLowerCase()))
-      .limit(1);
-
-    let userId: string;
-    if (!targetUser.length) {
-      const [newUser] = await db
-        .insert(users)
-        .values({ email: email.toLowerCase(), authProvider: "invite" })
-        .returning({ id: users.id });
-      userId = newUser.id;
-    } else {
-      userId = targetUser[0].id;
-    }
-
-    // Check if already a member
-    const existing = await db
-      .select()
-      .from(workspaceMembers)
-      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
-      .limit(1);
-
-    if (existing.length) {
-      return NextResponse.json({ error: "User already a member" }, { status: 400 });
-    }
-
-    await db.insert(workspaceMembers).values({
+    const result = await inviteMember({
       workspaceId,
-      userId,
-      role: role as "owner" | "admin" | "editor" | "analyst" | "viewer",
-      status: "pending",
+      email,
+      role,
+      actorUserId: session.user.id,
+      actorRole,
+      actorName: session.user.name ?? null,
     });
 
-    // TODO: Send invitation email
+    if (!result.ok) {
+      return NextResponse.json({ error: result.errors?.join(", ") || "Invite failed" }, { status: 400 });
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, emailSent: result.emailSent });
   } catch (e) {
     console.error("Invite member error:", e);
     return NextResponse.json({ error: "Failed to invite member" }, { status: 500 });

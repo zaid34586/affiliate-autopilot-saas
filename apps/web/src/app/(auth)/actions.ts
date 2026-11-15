@@ -12,6 +12,7 @@ import { getOrCreateWorkspace } from "@/lib/workspace";
 import { attributeSignup } from "@/lib/referrals/referrals";
 import { isValidReferralCode } from "@/lib/referrals/referrals-core";
 import { trackProductEvent } from "@/lib/analytics/product-analytics";
+import { activatePendingMemberships } from "@/lib/teams/invites";
 
 export type AuthFormState =
   | { errors?: { email?: string[]; password?: string[]; name?: string[] }; message?: string }
@@ -51,7 +52,7 @@ export async function signup(
     })
     .returning({ id: users.id });
 
-  // Phase 7: referral attribution + signup funnel event (best-effort, non-blocking failure)
+  // Phase 7: referral attribution + signup funnel event + invite acceptance (best-effort)
   if (newUser) {
     try {
       const workspace = await getOrCreateWorkspace(newUser.id);
@@ -65,6 +66,12 @@ export async function signup(
 
       if (referralCode && isValidReferralCode(referralCode)) {
         await attributeSignup(referralCode, newUser.id, workspace.id);
+      }
+
+      // Team invites: signing up with the invited email activates pending memberships
+      const activated = await activatePendingMemberships(newUser.id);
+      if (activated > 0) {
+        console.log(`[team] Activated ${activated} pending membership(s) for user ${newUser.id}`);
       }
     } catch (err) {
       console.error("Post-signup tracking error:", err);

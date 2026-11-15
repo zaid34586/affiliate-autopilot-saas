@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { workspaceMembers } from "@aa/db";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { getUserRoleInWorkspace } from "@/lib/auth-utils";
+import { changeMemberRole, revokeInvite } from "@/lib/teams/invites";
 
 export async function PATCH(
   req: Request,
@@ -17,41 +19,26 @@ export async function PATCH(
   const { id } = await params;
 
   try {
-    const requester = await db
-      .select()
-      .from(workspaceMembers)
-      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id)))
-      .limit(1);
-
-    if (!requester.length || requester[0].role !== "owner") {
-      return NextResponse.json({ error: "Only owner can change roles" }, { status: 403 });
+    const actorRole = await getUserRoleInWorkspace(workspaceId, session.user.id);
+    if (!actorRole) {
+      return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
 
     const body = await req.json();
     const { role } = body;
 
-    if (!["owner", "admin", "editor", "analyst", "viewer"].includes(role)) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    const result = await changeMemberRole({
+      workspaceId,
+      memberId: id,
+      newRole: role,
+      actorUserId: session.user.id,
+      actorRole,
+    });
+
+    if (!result.ok) {
+      const status = result.error === "Member not found" ? 404 : 400;
+      return NextResponse.json({ error: result.error }, { status });
     }
-
-    const target = await db
-      .select()
-      .from(workspaceMembers)
-      .where(and(eq(workspaceMembers.id, id), eq(workspaceMembers.workspaceId, workspaceId)))
-      .limit(1);
-
-    if (!target.length) {
-      return NextResponse.json({ error: "Member not found" }, { status: 404 });
-    }
-
-    if (target[0].role === "owner" && role !== "owner") {
-      return NextResponse.json({ error: "Cannot change owner role" }, { status: 400 });
-    }
-
-    await db
-      .update(workspaceMembers)
-      .set({ role: role as "owner" | "admin" | "editor" | "analyst" | "viewer" })
-      .where(eq(workspaceMembers.id, id));
 
     return NextResponse.json({ success: true });
   } catch (e) {
@@ -73,35 +60,41 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    const requester = await db
-      .select()
-      .from(workspaceMembers)
-      .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id)))
-      .limit(1);
-
-    if (!requester.length || !["owner", "admin"].includes(requester[0].role)) {
+    const actorRole = await getUserRoleInWorkspace(workspaceId, session.user.id);
+    if (!actorRole || !["owner", "admin"].includes(actorRole)) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    const target = await db
+    const [target] = await db
       .select()
       .from(workspaceMembers)
       .where(and(eq(workspaceMembers.id, id), eq(workspaceMembers.workspaceId, workspaceId)))
       .limit(1);
 
-    if (!target.length) {
+    if (!target) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    if (target[0].role === "owner") {
+    if (target.role === "owner") {
       return NextResponse.json({ error: "Cannot remove owner" }, { status: 400 });
     }
 
-    if (target[0].userId === session.user.id) {
+    if (target.userId === session.user.id) {
       return NextResponse.json({ error: "Cannot remove yourself" }, { status: 400 });
     }
 
-    await db.delete(workspaceMembers).where(eq(workspaceMembers.id, id));
+    // Admins cannot remove other admins (only owner can)
+    if (actorRole === "admin" && target.role === "admin") {
+      return NextResponse.json({ error: "Only the owner can remove an admin" }, { status: 403 });
+    }
+
+    // Pending invite → revoke; active member → remove entirely
+    if (target.status === "pending") {
+      const rev = await revokeInvite(workspaceId, id);
+      if (!rev.ok) return NextResponse.json({ error: rev.error }, { status: 400 });
+    } else {
+      await db.delete(workspaceMembers).where(eq(workspaceMembers.id, id));
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
