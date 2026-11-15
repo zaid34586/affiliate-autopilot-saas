@@ -1605,3 +1605,44 @@ export const referralSettings = pgTable("referral_settings", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ───────────────────────── PHASE 7: Email Lifecycle ─────────────────────────
+export const emailLog = pgTable(
+  "email_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id").references(() => workspaces.id, { onDelete: "set null" }),
+    template: text("template").notNull(), // welcome|activation_nudge|trial_ending|winback|payment_failed
+    subject: text("subject").notNull(),
+    status: text("status").notNull().default("queued"), // queued|sent|failed|skipped
+    providerMessageId: text("provider_message_id"),
+    error: text("error"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("el_user_template_idx").on(t.userId, t.template),
+    index("el_status_idx").on(t.status, t.createdAt),
+    index("el_created_idx").on(t.createdAt),
+  ],
+);
+
+export const emailUnsubscribes = pgTable(
+  "email_unsubscribes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    template: text("template"), // NULL = all lifecycle emails
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("eu_user_template_uq").on(t.userId, t.template),
+    index("eu_user_idx").on(t.userId),
+  ],
+);
