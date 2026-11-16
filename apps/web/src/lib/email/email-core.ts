@@ -6,6 +6,8 @@
  * based on their signals. All timing rules are pure + testable.
  */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 // ───────────────────────── TYPES ─────────────────────────
 
 export type EmailTemplate =
@@ -275,4 +277,45 @@ export function nextSendTime(date: Date, window: SendWindow = DEFAULT_SEND_WINDO
     next.setHours(window.startHour, 0, 0, 0);
   }
   return next;
+}
+
+// ───────────────────────── UNSUBSCRIBE SIGNING ─────────────────────────
+// Phase 4: unsubscribe links carry an HMAC so nobody can mass-unsubscribe
+// users by guessing UUIDs.
+
+/** HMAC-SHA256(userId[:template]) — base64url. */
+export function unsubscribeToken(
+  userId: string,
+  template: string | undefined,
+  secret: string,
+): string {
+  return createHmac("sha256", secret)
+    .update(`${userId}:${template ?? ""}`)
+    .digest("base64url");
+}
+
+/** Signed unsubscribe URL for the email footer. */
+export function buildUnsubscribeUrl(
+  appUrl: string,
+  userId: string,
+  template: string | undefined,
+  secret: string,
+): string {
+  const base = appUrl.replace(/\/$/, "");
+  const params = `user=${encodeURIComponent(userId)}${template ? `&template=${encodeURIComponent(template)}` : ""}`;
+  return `${base}/api/public/email/unsubscribe?${params}&sig=${encodeURIComponent(unsubscribeToken(userId, template, secret))}`;
+}
+
+/** Timing-safe signature check (false for missing/garbage sigs). */
+export function verifyUnsubscribeToken(
+  userId: string,
+  template: string | undefined,
+  sig: string | null | undefined,
+  secret: string,
+): boolean {
+  if (!userId || !sig) return false;
+  const expected = Buffer.from(unsubscribeToken(userId, template, secret));
+  const actual = Buffer.from(sig);
+  if (expected.length !== actual.length) return false;
+  return timingSafeEqual(expected, actual);
 }

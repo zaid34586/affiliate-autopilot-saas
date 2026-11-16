@@ -47,8 +47,8 @@ export async function GET(req: Request) {
       ),
     );
   }
-  if (status === "active") whereConditions.push(eq(users.email, sql`users.email`)); // all verified emails are active
-  if (status === "suspended") whereConditions.push(sql`false`); // no suspend field yet
+  if (status === "active") whereConditions.push(eq(users.status, "active"));
+  if (status === "suspended") whereConditions.push(eq(users.status, "suspended"));
 
   const orderColumn =
     SORTABLE_USER_COLUMNS[sort as UserSortKey] ?? SORTABLE_USER_COLUMNS.createdAt;
@@ -64,6 +64,8 @@ export async function GET(req: Request) {
         authProvider: users.authProvider,
         onboardingDone: users.onboardingDone,
         twoFactorEnabled: users.twoFactorEnabled,
+        status: users.status,
+        emailVerified: users.emailVerified,
         createdAt: users.createdAt,
         workspaceCount: sql<number>`(
           select count(*) from ${workspaceMembers} where ${workspaceMembers.userId} = ${users.id}

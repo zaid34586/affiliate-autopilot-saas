@@ -11,6 +11,9 @@ import {
   inSendWindow,
   nextSendTime,
   DEFAULT_SEND_WINDOW,
+  unsubscribeToken,
+  buildUnsubscribeUrl,
+  verifyUnsubscribeToken,
   LifecycleSignals,
   EmailTemplate,
 } from "./email-core";
@@ -236,5 +239,57 @@ describe("send window", () => {
     const next = nextSendTime(d);
     expect(next.getHours()).toBe(DEFAULT_SEND_WINDOW.startHour);
     expect(next.getDate()).toBe(15);
+  });
+});
+
+describe("unsubscribe signing (Phase 4)", () => {
+  const SECRET = "test-unsub-secret";
+  const USER = "11111111-2222-3333-4444-555555555555";
+
+  it("builds a signed url that verifies", () => {
+    const url = buildUnsubscribeUrl("https://example.com", USER, "welcome", SECRET);
+    expect(url).toContain(`/api/public/email/unsubscribe?user=${USER}`);
+    expect(url).toContain("template=welcome");
+    expect(url).toContain("sig=");
+
+    const parsed = new URL(url);
+    const sig = parsed.searchParams.get("sig");
+    expect(verifyUnsubscribeToken(USER, "welcome", sig, SECRET)).toBe(true);
+  });
+
+  it("works without a template", () => {
+    const url = buildUnsubscribeUrl("https://example.com/", USER, undefined, SECRET);
+    const parsed = new URL(url);
+    expect(parsed.searchParams.get("template")).toBeNull();
+    expect(
+      verifyUnsubscribeToken(USER, undefined, parsed.searchParams.get("sig"), SECRET),
+    ).toBe(true);
+  });
+
+  it("rejects a missing signature", () => {
+    expect(verifyUnsubscribeToken(USER, undefined, null, SECRET)).toBe(false);
+    expect(verifyUnsubscribeToken(USER, undefined, "", SECRET)).toBe(false);
+  });
+
+  it("rejects a signature for a different user", () => {
+    const sig = unsubscribeToken(USER, undefined, SECRET);
+    expect(
+      verifyUnsubscribeToken("99999999-2222-3333-4444-555555555555", undefined, sig, SECRET),
+    ).toBe(false);
+  });
+
+  it("rejects a signature for a different template", () => {
+    const sig = unsubscribeToken(USER, "welcome", SECRET);
+    expect(verifyUnsubscribeToken(USER, "winback", sig, SECRET)).toBe(false);
+  });
+
+  it("rejects a signature made with a different secret", () => {
+    const sig = unsubscribeToken(USER, undefined, "other-secret");
+    expect(verifyUnsubscribeToken(USER, undefined, sig, SECRET)).toBe(false);
+  });
+
+  it("rejects garbage signatures of different length", () => {
+    expect(verifyUnsubscribeToken(USER, undefined, "abc", SECRET)).toBe(false);
+    expect(verifyUnsubscribeToken(USER, undefined, "x".repeat(64), SECRET)).toBe(false);
   });
 });

@@ -13,5 +13,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     uid?: string;
     workspaceId?: string;
+    /** Phase 4 — session revocation counter (mirrors users.token_version). */
+    tv?: number;
   }
 }

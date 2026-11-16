@@ -18,7 +18,15 @@ export async function getUserRoleInWorkspace(
   const [member] = await db
     .select({ role: workspaceMembers.role })
     .from(workspaceMembers)
-    .where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)))
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.userId, userId),
+        // Only ACTIVE members hold a usable role — revoked/pending invites
+        // must not keep access (Phase 4 fix).
+        eq(workspaceMembers.status, "active"),
+      ),
+    )
     .limit(1);
 
   return member?.role as "owner" | "admin" | "editor" | "analyst" | "viewer" | null;

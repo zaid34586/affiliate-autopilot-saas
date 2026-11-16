@@ -20,6 +20,7 @@ import {
   buildEmailContent,
   deriveLifecycleState,
   nextSendTime,
+  buildUnsubscribeUrl,
   EmailTemplate,
   LifecycleSignals,
   UserLifecycleState,
@@ -49,8 +50,10 @@ export async function sendEmail(input: {
   const from = input.from || process.env.EMAIL_FROM || "Affiliate Autopilot <no-reply@affiliateautopilot.app>";
 
   if (!apiKey) {
-    // Console transport (development / unconfigured)
+    // Console transport (development / unconfigured) — log the body too so
+    // links (e.g. email verification) stay clickable in dev.
     console.log(`[email:console] To: ${input.to} | Subject: ${input.subject}`);
+    console.log(`[email:console] ${input.text}`);
     return { ok: true, providerMessageId: "console" };
   }
 
@@ -263,7 +266,7 @@ export async function runEmailLifecycle(options: { userId?: string; dryRun?: boo
 <p><a href="${content.ctaUrl}" style="background:#111;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">${content.ctaText}</a></p>
 <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
 <p style="font-size:12px;color:#888">You're receiving this because you have an Affiliate Autopilot account.
-<a href="${appUrl}/api/public/email/unsubscribe?user=${row.userId}">Unsubscribe</a></p>
+<a href="${buildUnsubscribeUrl(appUrl, row.userId, template, process.env.AUTH_SECRET || "")}">Unsubscribe</a></p>
 </div>`;
 
     const result = await sendEmail({

@@ -59,6 +59,10 @@ export const users = pgTable("users", {
   timezone: text("timezone").default("Asia/Kolkata"),
   language: text("language").default("en"),
   onboardingDone: boolean("onboarding_done").notNull().default(false),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  status: text("status").notNull().default("active"), // active | suspended
+  tokenVersion: integer("token_version").notNull().default(1),
   twoFactorSecret: text("two_factor_secret"),
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

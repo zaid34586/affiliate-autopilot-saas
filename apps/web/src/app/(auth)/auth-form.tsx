@@ -9,9 +9,11 @@ type Props = {
   googleEnabled: boolean;
   /** Referral code from ?ref= query param (signup only). */
   referralCode?: string;
+  /** Server-rendered informational message (e.g. email verified). */
+  notice?: string;
 };
 
-export function AuthForm({ mode, googleEnabled, referralCode }: Props) {
+export function AuthForm({ mode, googleEnabled, referralCode, notice }: Props) {
   const action = mode === "login" ? login : signup;
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(
     action,
@@ -95,6 +97,12 @@ export function AuthForm({ mode, googleEnabled, referralCode }: Props) {
             </p>
           )}
         </div>
+
+        {(notice || state?.notice) && (
+          <p className="rounded-lg border border-signal/40 bg-signal/10 px-3 py-2 text-sm text-signal">
+            {notice || state?.notice}
+          </p>
+        )}
 
         {state?.message && (
           <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
