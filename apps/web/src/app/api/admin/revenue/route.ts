@@ -8,7 +8,9 @@ import { NextResponse } from "next/server";
 import { requirePlatformAdmin } from "@/lib/admin/admin-auth";
 import { db } from "@/lib/db";
 import { subscriptions, workspaces, users } from "@aa/db";
-import { eq, and, desc, asc, sql, count, sum, gte, lte } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, sum, gte, lte, or, ilike } from "drizzle-orm";
+
+type PlanFilter = "free" | "starter" | "pro" | "agency";
 
 export async function GET(req: Request) {
   try {
@@ -144,7 +146,7 @@ async function getSubscriptionsList(req: Request) {
 
   const whereConditions = [];
   if (status && status !== "all") whereConditions.push(eq(subscriptions.status, status));
-  if (plan) whereConditions.push(eq(subscriptions.plan, plan));
+  if (plan) whereConditions.push(eq(subscriptions.plan, plan as PlanFilter));
   if (search) {
     whereConditions.push(
       or(
@@ -160,7 +162,7 @@ async function getSubscriptionsList(req: Request) {
       .select({
         id: subscriptions.id,
         workspaceId: subscriptions.workspaceId,
-        userId: subscriptions.userId,
+        userId: workspaces.ownerUserId, // subscriptions link via workspace -> owner
         status: subscriptions.status,
         plan: subscriptions.plan,
         amountCents: subscriptions.amountCents,

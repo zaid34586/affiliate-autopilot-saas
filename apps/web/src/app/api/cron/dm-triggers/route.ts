@@ -2,9 +2,10 @@
 // Processes incoming comments/DMs, matches keyword triggers, sends auto-replies.
 // Triggered by Vercel Cron: "*/2 * * * *"
 import { db } from "@/lib/db";
-import { autopilotConfig, dmTriggers, dmMessages, characters, connections } from "@aa/db";
-import { and, eq, isNull, lt } from "drizzle-orm";
+import { autopilotConfig, dmTriggers } from "@aa/db";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { pollYouTubeComments } from "@/lib/webhooks/youtube-comments";
 
 const CRON_SECRET = process.env.DM_TRIGGERS_CRON_SECRET?.trim();
 
@@ -47,23 +48,22 @@ export async function POST(req: Request) {
 
       if (triggers.length === 0) continue;
 
-      // Get character for this workspace (for reply voice)
-      const [character] = await db
-        .select({ name: characters.name, toneConfig: characters.toneConfig })
-        .from(characters)
-        .where(eq(characters.workspaceId, cfg.workspaceId))
-        .limit(1);
-
-      const characterName = character?.name ?? "Assistant";
-
-      // Get connections for platforms that support DM (IG, FB, TikTok)
-      // For each connection, check for new comments/DMs that match triggers
-      // This is a stub — real implementation would call platform APIs
-      // For now, just mark the job as run
+      // Character lookup happens in the reply senders (webhook-db /
+      // youtube-comments); this cron only counts pending trigger work.
       totalProcessed += triggers.length;
     }
 
-    return NextResponse.json({ ok: true, processed: totalProcessed });
+    // YouTube comments are never pushed by Google — poll them here instead
+    // (see src/lib/webhooks/youtube-comments.ts). Idempotent, safe to re-run.
+    let youtubePoll = null;
+    try {
+      youtubePoll = await pollYouTubeComments();
+      totalProcessed += youtubePoll.comments;
+    } catch (e) {
+      console.error("YouTube comment poll failed:", e);
+    }
+
+    return NextResponse.json({ ok: true, processed: totalProcessed, youtubePoll });
   } catch (e) {
     console.error("DM triggers cron error:", e);
     return NextResponse.json(

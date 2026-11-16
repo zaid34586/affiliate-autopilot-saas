@@ -1,40 +1,7 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-
-const OAUTH_CONFIG: Record<string, { authUrl: string; scope: string }> = {
-  instagram: {
-    authUrl: "https://www.facebook.com/v19.0/dialog/oauth",
-    scope: "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
-  },
-  facebook: {
-    authUrl: "https://www.facebook.com/v19.0/dialog/oauth",
-    scope: "pages_show_list,pages_read_engagement,pages_manage_posts",
-  },
-  youtube: {
-    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
-    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile",
-  },
-  tiktok: {
-    authUrl: "https://www.tiktok.com/v2/auth/authorize/",
-    scope: "video.publish,user.info.basic,video.list",
-  },
-  x: {
-    authUrl: "https://twitter.com/i/oauth2/authorize",
-    scope: "tweet.read tweet.write users.read offline.access",
-  },
-  amazon: {
-    authUrl: "https://www.amazon.com/ap/oa",
-    scope: "profile portable:products:read portable:orders:read",
-  },
-  clickbank: {
-    authUrl: "https://api.clickbank.com/oauth2/authorize",
-    scope: "read_products read_sales",
-  },
-  digistore: {
-    authUrl: "https://www.digistore24.com/oauth/authorize",
-    scope: "read_products read_sales",
-  },
-};
+import { OAUTH_CONFIG, isValidProvider } from "@/lib/connections/oauth-config";
+import { createOAuthState, setStateCookie, generatePkceVerifier } from "@/lib/connections/oauth-state";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -45,18 +12,29 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const provider = body.provider;
 
-  const config = OAUTH_CONFIG[provider];
-  if (!config) {
+  if (!provider || !isValidProvider(provider)) {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
   }
 
+  const config = OAUTH_CONFIG[provider];
   const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`] || process.env[`${provider.toUpperCase()}_APP_ID`];
   if (!clientId) {
     return NextResponse.json({ error: `${provider} client ID not configured` }, { status: 500 });
   }
 
   const redirectUri = `${process.env.NEXTAUTH_URL}/api/auth/callback/${provider}`;
-  const state = Buffer.from(JSON.stringify({ workspaceId: session.user.workspaceId, provider })).toString("base64");
+
+  // Generate PKCE verifier/challenge if required
+  let pkceVerifier: string | undefined;
+  let codeChallenge: string | undefined;
+  if (config.pkceRequired) {
+    const pkce = await generatePkceVerifier();
+    pkceVerifier = pkce.verifier;
+    codeChallenge = pkce.challenge;
+  }
+
+  // Create signed state with HMAC
+  const { state, nonce } = await createOAuthState(session.user.workspaceId, provider, pkceVerifier);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -64,11 +42,23 @@ export async function POST(req: Request) {
     scope: config.scope,
     response_type: "code",
     state,
-    access_type: "offline",
-    prompt: "consent",
   });
+
+  // Only add offline access for providers that support it
+  if (config.supportsOfflineAccess) {
+    params.set("access_type", "offline");
+    params.set("prompt", "consent");
+  }
+
+  // Add PKCE challenge if required
+  if (codeChallenge) {
+    params.set("code_challenge", codeChallenge);
+    params.set("code_challenge_method", "S256");
+  }
 
   const authUrl = `${config.authUrl}?${params.toString()}`;
 
-  return NextResponse.json({ url: authUrl });
+  const response = NextResponse.json({ url: authUrl });
+  setStateCookie(response.headers, nonce);
+  return response;
 }

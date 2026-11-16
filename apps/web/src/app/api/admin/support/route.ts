@@ -11,6 +11,19 @@ import { db } from "@/lib/db";
 import { supportTickets, ticketMessages, workspaces, users } from "@aa/db";
 import { eq, and, desc, asc, ilike, or, sql, count, gte } from "drizzle-orm";
 
+// Only these columns are safe/meaningful to sort by (avoids indexing table methods).
+const SORTABLE_TICKET_COLUMNS = {
+  createdAt: supportTickets.createdAt,
+  updatedAt: supportTickets.updatedAt,
+  resolvedAt: supportTickets.resolvedAt,
+  status: supportTickets.status,
+  priority: supportTickets.priority,
+  category: supportTickets.category,
+  subject: supportTickets.subject,
+  id: supportTickets.id,
+} as const;
+type TicketSortKey = keyof typeof SORTABLE_TICKET_COLUMNS;
+
 export async function GET(req: Request) {
   try {
     await requirePlatformAdmin();
@@ -46,7 +59,8 @@ export async function GET(req: Request) {
     );
   }
 
-  const orderColumn = supportTickets[sort as keyof typeof supportTickets] || supportTickets.createdAt;
+  const orderColumn =
+    SORTABLE_TICKET_COLUMNS[sort as TicketSortKey] ?? SORTABLE_TICKET_COLUMNS.createdAt;
   const orderFn = order === "asc" ? asc : desc;
 
   const [tickets, totalResult] = await Promise.all([

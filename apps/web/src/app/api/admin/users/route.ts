@@ -11,6 +11,15 @@ import { db } from "@/lib/db";
 import { users, workspaces, workspaceMembers, subscriptions } from "@aa/db";
 import { eq, and, desc, asc, ilike, or, sql, count, gte, lte } from "drizzle-orm";
 
+// Only these columns are safe/meaningful to sort by (avoids indexing table methods).
+const SORTABLE_USER_COLUMNS = {
+  createdAt: users.createdAt,
+  email: users.email,
+  name: users.name,
+  id: users.id,
+} as const;
+type UserSortKey = keyof typeof SORTABLE_USER_COLUMNS;
+
 export async function GET(req: Request) {
   try {
     await requirePlatformAdmin();
@@ -41,7 +50,8 @@ export async function GET(req: Request) {
   if (status === "active") whereConditions.push(eq(users.email, sql`users.email`)); // all verified emails are active
   if (status === "suspended") whereConditions.push(sql`false`); // no suspend field yet
 
-  const orderColumn = users[sort as keyof typeof users] || users.createdAt;
+  const orderColumn =
+    SORTABLE_USER_COLUMNS[sort as UserSortKey] ?? SORTABLE_USER_COLUMNS.createdAt;
   const orderFn = order === "asc" ? asc : desc;
 
   const [userRows, totalResult] = await Promise.all([
@@ -59,7 +69,10 @@ export async function GET(req: Request) {
           select count(*) from ${workspaceMembers} where ${workspaceMembers.userId} = ${users.id}
         )::int`,
         subscriptionStatus: sql<string>`(
-          select status from ${subscriptions} where ${subscriptions.userId} = ${users.id} order by created_at desc limit 1
+          select s.status from ${subscriptions} s
+          join ${workspaces} w on w.id = s.workspace_id
+          where w.owner_user_id = ${users.id}
+          order by s.created_at desc limit 1
         )`,
       })
       .from(users)

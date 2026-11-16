@@ -100,7 +100,7 @@ export const connections = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    provider: text("provider").notNull(), // instagram|tiktok|youtube|x|pinterest|facebook|linkedin|gemini_byok|amazon_pa|clickbank|digistore|shareasale|impact|cj|stripe
+    provider: text("provider").notNull(), // instagram|tiktok|youtube|x|pinterest|facebook|linkedin|gemini_byok|amazon_pa|clickbank|digistore|shareasale|impact|cj|stripe|whatsapp
     accountId: text("account_id"),
     accountName: text("account_name"),
     accountAvatar: text("account_avatar"),
@@ -110,11 +110,18 @@ export const connections = pgTable(
     apiKeyEnc: text("api_key_enc"), // BYOK: user ki apni Gemini/GCP key (optional)
     scopes: jsonb("scopes").$type<string[]>(),
     status: connectionStatusEnum("status").notNull().default("active"),
+    // Webhook-related fields
+    phoneNumberId: text("phone_number_id"), // WhatsApp Business phone number ID
+    metaVerifyToken: text("meta_verify_token"), // Per-connection verify token for Meta webhooks
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("conn_ws_provider_idx").on(t.workspaceId, t.provider)],
+  (t) => [
+    uniqueIndex("conn_ws_provider_uq").on(t.workspaceId, t.provider),
+    index("conn_ws_idx").on(t.workspaceId),
+    index("conn_phone_number_idx").on(t.phoneNumberId),
+  ],
 );
 
 // ───────────────────────── BRAND / CHARACTER ─────────────────────────
@@ -470,6 +477,8 @@ export const dmMessages = pgTable(
     productId: uuid("product_id"),
     body: text("body").notNull(),
     uniqueLinkCode: text("unique_link_code"),
+    /** Platform comment id that triggered this DM — webhook idempotency key. */
+    sourceCommentId: text("source_comment_id"),
     status: dmStatusEnum("status").notNull().default("queued"),
     approvalMode: dmModeEnum("approval_mode").notNull().default("semi"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
@@ -477,7 +486,10 @@ export const dmMessages = pgTable(
     conversionId: uuid("conversion_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("dm_ws_status_idx").on(t.workspaceId, t.status)],
+  (t) => [
+    index("dm_ws_status_idx").on(t.workspaceId, t.status),
+    uniqueIndex("dm_ws_platform_comment_uq").on(t.workspaceId, t.platform, t.sourceCommentId),
+  ],
 );
 
 // ───────────────────────── DM FUNNELS (auto-funnel sequences) ─────────────────────────

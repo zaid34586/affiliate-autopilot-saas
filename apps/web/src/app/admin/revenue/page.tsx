@@ -8,10 +8,19 @@ import { subscriptions, workspaces, users } from "@aa/db";
 import { eq, and, desc, asc, ilike, or, sql, count, sum, gte, lte } from "drizzle-orm";
 import Link from "next/link";
 
+type RevenueSearchParams = {
+  type?: string;
+  page?: string;
+  limit?: string;
+  search?: string;
+  status?: string;
+  plan?: string;
+};
+
 export default async function AdminRevenuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; page?: string; limit?: string; search?: string; status?: string; plan?: string }>;
+  searchParams: Promise<RevenueSearchParams>;
 }) {
   await requirePlatformAdmin();
   const params = await searchParams;
@@ -114,8 +123,8 @@ async function renderOverview() {
                 <div key={r.plan} className="flex items-center justify-between p-3 bg-ink-2 rounded-lg">
                   <div className="flex items-center gap-3">
                     <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium ${
-                      r.plan === "growth" ? "bg-emerald/20 text-emerald" :
-                      r.plan === "scale" ? "bg-amber/20 text-amber" :
+                      r.plan === "pro" ? "bg-emerald/20 text-emerald" :
+                      r.plan === "agency" ? "bg-amber/20 text-amber" :
                       r.plan === "starter" ? "bg-blue/20 text-blue" :
                       "bg-slate/20 text-slate"
                     }`}>
@@ -144,7 +153,7 @@ async function renderOverview() {
                     <p className="text-xs text-bone-3">{s.ownerEmail} • {s.plan}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-bone">${(s.amountCents / 100).toLocaleString()}</p>
+                    <p className="font-semibold text-bone">${((s.amountCents ?? 0) / 100).toLocaleString()}</p>
                     <p className="text-xs text-bone-3">{s.status}</p>
                   </div>
                 </div>
@@ -162,12 +171,12 @@ function StatCard({ label, value, color }: { label: string; value: string; color
   return (
     <div className="panel p-5">
       <p className="text-sm text-bone-3">{label}</p>
-      <p className="mt-1 text-3xl font-semibold text-bone {color}">{value}</p>
+      <p className={`mt-1 text-3xl font-semibold text-bone ${color}`}>{value}</p>
     </div>
   );
 }
 
-async function renderSubscriptionsList(params: any) {
+async function renderSubscriptionsList(params: RevenueSearchParams) {
   const page = Math.max(1, parseInt(params.page || "1"));
   const limit = Math.min(100, Math.max(1, parseInt(params.limit || "50")));
   const status = params.status;
@@ -177,7 +186,7 @@ async function renderSubscriptionsList(params: any) {
 
   const whereConditions = [];
   if (status && status !== "all") whereConditions.push(eq(subscriptions.status, status));
-  if (plan) whereConditions.push(eq(subscriptions.plan, plan));
+  if (plan) whereConditions.push(eq(subscriptions.plan, plan as PlanValue));
   if (search) {
     whereConditions.push(
       or(
@@ -196,6 +205,7 @@ async function renderSubscriptionsList(params: any) {
         status: subscriptions.status,
         plan: subscriptions.plan,
         amountCents: subscriptions.amountCents,
+        interval: subscriptions.interval,
         currentPeriodEnd: subscriptions.currentPeriodEnd,
         canceledAt: subscriptions.canceledAt,
         createdAt: subscriptions.createdAt,
@@ -302,9 +312,9 @@ async function renderSubscriptionsList(params: any) {
                     </Link>
                   </td>
                   <td className="py-3 px-4 hidden md:table-cell capitalize">{s.plan}</td>
-                  <td className="py-3 px-4 hidden lg:table-cell text-bone">${(s.amountCents / 100).toLocaleString()}/{s.interval}</td>
+                  <td className="py-3 px-4 hidden lg:table-cell text-bone">${((s.amountCents ?? 0) / 100).toLocaleString()}/{s.interval ?? "mo"}</td>
                   <td className="py-3 px-4 hidden lg:table-cell">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs ${statusColors[s.status] || "bg-ink-3 text-bone-2"}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs ${statusColors[s.status ?? ""] || "bg-ink-3 text-bone-2"}`}>
                       {s.status}
                     </span>
                   </td>
