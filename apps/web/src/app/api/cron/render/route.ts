@@ -1,28 +1,27 @@
 import { runRenderLoop } from "@/lib/video/worker";
 import { NextResponse } from "next/server";
+import { cronGuard } from "@/lib/cron-auth";
 
 /**
- * POST /api/cron/render — render worker entry point.
+ * /api/cron/render — render worker entry point.
  * Claims queued videos (FOR UPDATE SKIP LOCKED) and renders up to 10 in
- * parallel. Trigger by external cron / Vercel cron / the Docker worker with:
- *   Header: x-cron-secret: $RENDER_CRON_SECRET
- * Local dev: works without the secret when RENDER_CRON_SECRET is unset.
+ * parallel. GET (Vercel Cron default) and POST both run the loop; both are
+ * authorized with the shared CRON_SECRET (Authorization: Bearer … or
+ * x-cron-secret). Local dev works without the secret; production fails closed.
  */
 export const maxDuration = 300; // long-running renders (Pro plans raise serverless limits)
 
-export async function POST(req: Request) {
-  const secret = process.env.RENDER_CRON_SECRET?.trim();
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runRenderCron(req);
+}
 
-  if (secret) {
-    if (provided !== secret) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "RENDER_CRON_SECRET not configured" }, { status: 503 });
-  }
+export async function POST(req: Request) {
+  return runRenderCron(req);
+}
+
+async function runRenderCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const summary = await runRenderLoop({ maxJobs: 10, concurrency: 10 });

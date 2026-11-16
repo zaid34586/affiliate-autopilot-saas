@@ -1,29 +1,28 @@
-// Phase 5 Module A — Publish cron (runs every 30 min during active hours).
+// Phase 5 Module A — Publish cron.
 // Finds scheduled posts ready to publish, respects daily caps & quiet hours.
-// Triggered by Vercel Cron: "*/30 * * * *"
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { autopilotConfig, posts, connections, videos } from "@aa/db";
 import { and, eq, isNull, lt, gte, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { publishVideoPost } from "@/lib/publisher";
 import { isQuietHours, checkDailyPostCap } from "@/lib/scheduler/jobs";
-
-const CRON_SECRET = process.env.PUBLISH_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 60; // publish can be quick
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runPublishCron(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "PUBLISH_CRON_SECRET not configured" }, { status: 503 });
-  }
+export async function POST(req: Request) {
+  return runPublishCron(req);
+}
+
+async function runPublishCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const now = new Date();
@@ -121,6 +120,16 @@ export async function POST(req: Request) {
             continue;
           }
 
+          // Atomic claim: scheduled -> publishing. The guarded update returns
+          // a row ONLY if this run won the race, so concurrent cron runs can
+          // never double-publish the same post.
+          const claimed = await db
+            .update(posts)
+            .set({ status: "publishing", updatedAt: new Date() })
+            .where(and(eq(posts.id, post.id), eq(posts.status, "scheduled")))
+            .returning({ id: posts.id });
+          if (claimed.length === 0) continue; // claimed by another run
+
           // Publish!
           try {
             const result = await publishVideoPost({
@@ -136,7 +145,13 @@ export async function POST(req: Request) {
               totalSkipped++;
             }
           } catch (e) {
+            // Pre-publish failures (e.g. transient connection errors) are
+            // thrown, not recorded — release the claim so a later run retries.
             console.error(`Publish failed for post ${post.id}:`, e);
+            await db
+              .update(posts)
+              .set({ status: "scheduled", updatedAt: new Date() })
+              .where(and(eq(posts.id, post.id), eq(posts.status, "publishing")));
             totalSkipped++;
           }
         }
@@ -151,8 +166,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "publish-cron" });
 }

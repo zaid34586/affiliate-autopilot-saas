@@ -1,27 +1,28 @@
 /**
  * Phase 6 — Video Remix Cron
- * POST /api/cron/video-remix
- * Auto-creates remixes from optimizer decisions and high-performing videos
+ * Auto-creates remixes from optimizer decisions and high-performing videos.
+ * GET (Vercel Cron default) and POST both run the job; both are authorized
+ * with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, videos, optimizerDecisions, products, postPerformance, contents } from "@aa/db";
 import { eq, and, desc, sql, gte, sum } from "drizzle-orm";
+import { cronGuard } from "@/lib/cron-auth";
 import { createVideoRemixJob, canRemixVideo } from "@/lib/video/video-remix";
 
-export async function POST(req: Request) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(req: Request) {
+  return runVideoRemixCron(req);
+}
 
-  // Also allow in development
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+export async function POST(req: Request) {
+  return runVideoRemixCron(req);
+}
+
+async function runVideoRemixCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     // Get all workspaces

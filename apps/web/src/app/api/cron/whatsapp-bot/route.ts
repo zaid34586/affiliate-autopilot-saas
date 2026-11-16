@@ -1,26 +1,27 @@
 /**
  * Phase 6 — WhatsApp Bot Cron
- * POST /api/cron/whatsapp-bot
- * Daily cleanup and analytics for WhatsApp bot
+ * Daily cleanup and analytics for WhatsApp bot.
+ * GET (Vercel Cron default) and POST both run the job; both are authorized
+ * with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces, whatsappLinks, whatsappWebhookEvents, dmMessages } from "@aa/db";
 import { eq, and, gte, sql, desc } from "drizzle-orm";
+import { cronGuard } from "@/lib/cron-auth";
+
+export async function GET(req: Request) {
+  return runWhatsAppBotCron(req);
+}
 
 export async function POST(req: Request) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  return runWhatsAppBotCron(req);
+}
 
-  // Also allow in development
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+async function runWhatsAppBotCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     // Get all workspaces

@@ -202,7 +202,7 @@ async function get(url) {
   // 11. Funnel cron endpoint
   res = await fetch(`${BASE}/api/cron/dm-funnel`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-cron-secret": process.env.DM_TRIGGERS_CRON_SECRET ?? "test-secret" },
+    headers: { "content-type": "application/json", "x-cron-secret": process.env.CRON_SECRET ?? "test-secret" },
   });
   const cronBody = await res.json();
   check("funnel cron 200", res.status === 200, `status=${res.status}`);

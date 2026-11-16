@@ -1,26 +1,27 @@
 /**
  * Phase 6 — Command Center Cron
- * POST /api/cron/command-center
- * Generates proactive recommendations for all workspaces (runs daily at 1 AM)
+ * Generates proactive recommendations for all workspaces (runs daily).
+ * GET (Vercel Cron default) and POST both run the job; both are authorized
+ * with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspaces } from "@aa/db";
+import { cronGuard } from "@/lib/cron-auth";
 import { getCommandCenterRecommendations } from "@/lib/analytics/command-center";
 
-export async function POST(req: Request) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(req: Request) {
+  return runCommandCenterCron(req);
+}
 
-  // Also allow in development
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+export async function POST(req: Request) {
+  return runCommandCenterCron(req);
+}
+
+async function runCommandCenterCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     // Get all workspaces

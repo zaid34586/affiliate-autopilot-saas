@@ -1,30 +1,26 @@
 // Phase 5 Module C — Thinking Engine cron (daily self-reflection).
 // Writes one journal entry per character per day (idempotent).
-// Triggered by Vercel Cron: "0 5 * * *" (after the 04:00 scheduler).
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { characters } from "@aa/db";
 import { NextResponse } from "next/server";
 import { runDailyReflection } from "@/lib/character/thinking";
-
-const CRON_SECRET = process.env.THINKING_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runThinkingCron(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "THINKING_CRON_SECRET not configured" },
-      { status: 503 },
-    );
-  }
+export async function POST(req: Request) {
+  return runThinkingCron(req);
+}
+
+async function runThinkingCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const all = await db
@@ -54,8 +50,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "thinking-cron" });
 }

@@ -1,28 +1,27 @@
 // Phase 5 Module B — Analytics Cron.
 // Syncs platform insights + affiliate conversions.
-// Runs every 4 hours: "0 */4 * * *"
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { autopilotConfig, workspaces } from "@aa/db";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { syncPlatformInsights, syncAffiliateConversions } from "@/lib/analytics/sync";
-
-const CRON_SECRET = process.env.ANALYTICS_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 120; // 2 min for sync
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runAnalyticsSync(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "ANALYTICS_CRON_SECRET not configured" }, { status: 503 });
-  }
+export async function POST(req: Request) {
+  return runAnalyticsSync(req);
+}
+
+async function runAnalyticsSync(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const url = new URL(req.url);
@@ -81,8 +80,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "analytics-cron" });
 }

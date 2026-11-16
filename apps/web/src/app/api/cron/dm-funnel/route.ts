@@ -1,10 +1,12 @@
-// Phase 5 Module D — DM Funnel cron (runs every 2 min).
+// Phase 5 Module D — DM Funnel cron.
 // Processes incoming comments/DMs, matches triggers, starts/runs funnels.
-// Triggered by Vercel Cron: "*/2 * * * *"
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { autopilotConfig, characters } from "@aa/db";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { cronGuard } from "@/lib/cron-auth";
 import {
   loadFunnels,
   loadTriggersWithFunnels,
@@ -20,25 +22,19 @@ import {
   type ConversationState,
 } from "@/lib/dm/funnel";
 
-const CRON_SECRET = process.env.DM_TRIGGERS_CRON_SECRET?.trim();
-
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runDmFunnelCron(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "DM_TRIGGERS_CRON_SECRET not configured" },
-      { status: 503 },
-    );
-  }
+export async function POST(req: Request) {
+  return runDmFunnelCron(req);
+}
+
+async function runDmFunnelCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const activeConfigs = await db
@@ -154,10 +150,6 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "dm-funnel-cron" });
 }
 
 async function incrementDailyCap(workspaceId: string, platform: string) {

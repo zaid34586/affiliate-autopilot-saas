@@ -118,7 +118,7 @@ async function post(url, payload) {
   // 5. Cron endpoint works (reflects all characters)
   res = await fetch(`${BASE}/api/cron/thinking`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-cron-secret": process.env.THINKING_CRON_SECRET ?? "test-secret" },
+    headers: { "content-type": "application/json", "x-cron-secret": process.env.CRON_SECRET ?? "test-secret" },
   });
   body = await res.json();
   check("cron 200", res.status === 200, `status=${res.status}`);

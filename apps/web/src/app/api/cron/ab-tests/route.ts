@@ -1,30 +1,31 @@
 /**
  * Phase 6 — A/B Test Cron
- * POST /api/cron/ab-tests
  * Runs A/B test analysis and auto-creates tests from optimizer decisions
+ * GET (Vercel Cron default) and POST both run the job; both are authorized
+ * with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { abTests } from "@aa/db";
 import { eq } from "drizzle-orm";
+import { cronGuard } from "@/lib/cron-auth";
 import {
   runAbTestAnalysis,
   createAbTestsFromOptimizerDecisions,
 } from "@/lib/optimizer/ab-test";
 
-export async function POST(req: Request) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(req: Request) {
+  return runAbTestsCron(req);
+}
 
-  // Also allow in development
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+export async function POST(req: Request) {
+  return runAbTestsCron(req);
+}
+
+async function runAbTestsCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     // Get all workspaces with active A/B tests

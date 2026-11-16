@@ -16,23 +16,21 @@ import {
   type JobContext,
   type JobType,
 } from "@/lib/scheduler/jobs";
-
-const CRON_SECRET = process.env.SCHEDULER_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 300; // 5 min for full cycle across workspaces
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runScheduler(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "SCHEDULER_CRON_SECRET not configured" }, { status: 503 });
-  }
+export async function POST(req: Request) {
+  return runScheduler(req);
+}
+
+async function runScheduler(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   const url = new URL(req.url);
   const manualRun = url.searchParams.get("manual") === "true";
@@ -146,9 +144,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-// GET for health check
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "scheduler" });
 }

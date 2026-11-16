@@ -1,24 +1,28 @@
 /**
  * Phase 7 — Email Lifecycle Cron
- * POST /api/cron/email-lifecycle
  *
  * Daily: run welcome/activation/trial-ending/winback pipeline.
  * Honors send window (9 AM – 8 PM) and per-template cooldowns.
+ * GET (Vercel Cron default) and POST both run the pipeline; both are
+ * authorized with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
 import { NextResponse } from "next/server";
 import { runEmailLifecycle } from "@/lib/email/email";
 import { inSendWindow, DEFAULT_SEND_WINDOW } from "@/lib/email/email-core";
+import { cronGuard } from "@/lib/cron-auth";
+
+export async function GET(req: Request) {
+  return runEmailLifecycleCron(req);
+}
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  return runEmailLifecycleCron(req);
+}
 
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+async function runEmailLifecycleCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const now = new Date();

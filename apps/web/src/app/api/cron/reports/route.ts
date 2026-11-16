@@ -1,31 +1,28 @@
-// Phase 6 Module B — AI Reports cron (runs daily at 6 AM).
+// Phase 6 Module B — AI Reports cron.
 // Generates scheduled AI reports for all workspaces.
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { reportSchedules, workspaces } from "@aa/db";
 import { eq, lte, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { generateAIReport, updateScheduleAfterGeneration } from "@/lib/analytics/reports";
 import type { ReportType } from "@/lib/analytics/reports";
-
-const CRON_SECRET = process.env.REPORTS_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 120;
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runReportsCron(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "REPORTS_CRON_SECRET not configured" },
-      { status: 503 },
-    );
-  }
+export async function POST(req: Request) {
+  return runReportsCron(req);
+}
+
+async function runReportsCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const now = new Date();
@@ -69,8 +66,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "reports-cron" });
 }

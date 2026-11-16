@@ -1,30 +1,27 @@
-// Phase 6 — Auto-Optimizer cron (runs every 6 hours).
+// Phase 6 — Auto-Optimizer cron.
 // Analyzes post performance and makes optimization decisions.
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { optimizerState, posts } from "@aa/db";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getOptimizerConfig, loadPostMetrics, runOptimizer, recordDecisions, loadOptimizerDashboard } from "@/lib/optimizer/optimizer";
-
-const CRON_SECRET = process.env.OPTIMIZER_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 120;
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runOptimizerCron(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "OPTIMIZER_CRON_SECRET not configured" },
-      { status: 503 },
-    );
-  }
+export async function POST(req: Request) {
+  return runOptimizerCron(req);
+}
+
+async function runOptimizerCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const workspaces = await db
@@ -81,8 +78,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "optimizer-cron" });
 }

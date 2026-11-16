@@ -1,22 +1,26 @@
 /**
  * Phase 7 — Status Check Cron
- * POST /api/cron/status-check
  *
  * Probes all integration endpoints, updates health, auto-opens/resolves incidents.
+ * GET (Vercel Cron default) and POST both run the checks; both are authorized
+ * with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
 import { NextResponse } from "next/server";
+import { cronGuard } from "@/lib/cron-auth";
 import { runHealthChecks } from "@/lib/status/status";
 
-export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(req: Request) {
+  return runStatusCheckCron(req);
+}
 
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+export async function POST(req: Request) {
+  return runStatusCheckCron(req);
+}
+
+async function runStatusCheckCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const results = await runHealthChecks();

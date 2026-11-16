@@ -1,28 +1,28 @@
-// Phase 5 Module A — DM Triggers cron (runs every 2 min).
-// Processes incoming comments/DMs, matches keyword triggers, sends auto-replies.
-// Triggered by Vercel Cron: "*/2 * * * *"
+// Phase 5 Module A — DM Triggers cron.
+// Processes incoming comments/DMs, matches keyword triggers, sends auto-replies,
+// and polls YouTube comments (Google never pushes them).
+// Vercel Cron sends GET; POST works too — both are authorized via CRON_SECRET
+// and run the same job (see src/lib/cron-auth.ts).
 import { db } from "@/lib/db";
 import { autopilotConfig, dmTriggers } from "@aa/db";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { pollYouTubeComments } from "@/lib/webhooks/youtube-comments";
-
-const CRON_SECRET = process.env.DM_TRIGGERS_CRON_SECRET?.trim();
+import { cronGuard } from "@/lib/cron-auth";
 
 export const maxDuration = 30;
 
-export async function POST(req: Request) {
-  const provided =
-    req.headers.get("x-cron-secret") ??
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+export async function GET(req: Request) {
+  return runDmTriggers(req);
+}
 
-  if (CRON_SECRET) {
-    if (provided !== CRON_SECRET) {
-      return NextResponse.json({ error: "Invalid cron secret" }, { status: 401 });
-    }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "DM_TRIGGERS_CRON_SECRET not configured" }, { status: 503 });
-  }
+export async function POST(req: Request) {
+  return runDmTriggers(req);
+}
+
+async function runDmTriggers(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     const activeConfigs = await db
@@ -71,8 +71,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, service: "dm-triggers-cron" });
 }

@@ -1,24 +1,25 @@
 /**
  * Phase 7 — Feature Flags Cron
- * POST /api/cron/feature-flags
- * Initializes default feature flags (runs on deploy)
+ * Initializes default feature flags (runs on deploy/daily).
+ * GET (Vercel Cron default) and POST both run the job; both are authorized
+ * with the shared CRON_SECRET (see src/lib/cron-auth.ts).
  */
 
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { cronGuard } from "@/lib/cron-auth";
 import { initializeDefaultFlags } from "@/lib/feature-flags/feature-flags";
 
-export async function POST(req: Request) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(req: Request) {
+  return runFeatureFlagsCron(req);
+}
 
-  // Also allow in development
-  if (process.env.NODE_ENV === "production" && !process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
-  }
+export async function POST(req: Request) {
+  return runFeatureFlagsCron(req);
+}
+
+async function runFeatureFlagsCron(req: Request) {
+  const guard = cronGuard(req);
+  if (guard) return guard;
 
   try {
     await initializeDefaultFlags();
